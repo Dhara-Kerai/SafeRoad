@@ -109,9 +109,8 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
   }
 
   const priority = (severity === 'Critical' || severity === 'High') ? 'Urgent' : 'Standard';
-  const aiVerified = report.status !== 'REPORTED';
-
   const aiResult = report.aiResults?.[0];
+  const aiVerified = Boolean(aiResult?.potholeDetected);
   const aiConfidence = aiResult ? aiResult.confidenceScore : undefined;
   
   let aiSeverity = undefined;
@@ -214,7 +213,7 @@ export interface GetReportsParams {
   sort_by?: string;
 }
 
-export const getMyReports = async (params: GetReportsParams = {}) => {
+const getReports = async (params: GetReportsParams = {}, mine = false) => {
   const query = new URLSearchParams();
   if (params.page) query.append('page', String(params.page));
   if (params.size) query.append('limit', String(params.size));
@@ -232,7 +231,7 @@ export const getMyReports = async (params: GetReportsParams = {}) => {
   if (params.sort_by) {
     query.append('sort_by', params.sort_by);
   }
-  query.append('mine', 'true');
+  if (mine) query.append('mine', 'true');
 
   const path = `/reports?${query.toString()}`;
   
@@ -248,6 +247,10 @@ export const getMyReports = async (params: GetReportsParams = {}) => {
     size: response.size ?? response.pagination?.limit ?? rawItems.length,
   };
 };
+
+export const getMyReports = (params: GetReportsParams = {}) => getReports(params, true);
+
+export const getAssignedReports = (params: GetReportsParams = {}) => getReports(params);
 
 export const getReportById = async (reportId: string): Promise<ManagedReport> => {
   const response = await requestJson<any>(`/reports/${reportId}`, {
@@ -382,6 +385,3 @@ export const getLocation = async (): Promise<GeoLocationResult> => {
     );
   });
 };
-
-export const runAI = () => Promise.resolve();
-

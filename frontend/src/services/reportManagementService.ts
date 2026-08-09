@@ -1,5 +1,6 @@
 export {
   getMyReports,
+  getAssignedReports,
   getReportById,
   addComment,
   listComments,

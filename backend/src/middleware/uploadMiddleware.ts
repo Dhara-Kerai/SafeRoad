@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import multer, { FileFilterCallback, MulterError } from 'multer';
+import fs from 'fs';
+import path from 'path';
 import {
   getUploadDirectoryPath,
   generateUniqueFileName,
@@ -25,18 +27,16 @@ const storage = multer.diskStorage({
   },
 });
 
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+
 const fileFilter = (
   req: Request,
   file: Express.Multer.File,
   cb: FileFilterCallback
 ) => {
-  const allowedMimeTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-  ];
-
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (allowedMimeTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
     cb(null, true);
   } else {
     cb(
@@ -45,6 +45,34 @@ const fileFilter = (
         400
       )
     );
+  }
+};
+
+const validateMagicBytes = (filePath: string): boolean => {
+  const buffer = Buffer.alloc(12);
+  let fd: number | null = null;
+  try {
+    fd = fs.openSync(filePath, 'r');
+    const bytesRead = fs.readSync(fd, buffer, 0, 12, 0);
+    fs.closeSync(fd);
+    fd = null;
+    if (bytesRead < 4) return false;
+
+    const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    const isPng =
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47;
+    const isWebp =
+      bytesRead >= 12 &&
+      buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+
+    return isJpeg || isPng || isWebp;
+  } catch {
+    if (fd !== null) fs.closeSync(fd);
+    return false;
   }
 };
 
@@ -86,6 +114,20 @@ export const parseSingleImage = (
 
     if (!file) {
       return next(new AppError('Please upload an image file.', 400));
+    }
+
+    if (!validateMagicBytes(file.path)) {
+      if (fs.existsSync(file.path)) {
+        try {
+          fs.unlinkSync(file.path);
+        } catch {}
+      }
+      return next(
+        new AppError(
+          'Uploaded file content does not match valid image format magic bytes.',
+          400
+        )
+      );
     }
 
     req.file = file;

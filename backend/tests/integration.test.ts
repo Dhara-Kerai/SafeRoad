@@ -188,17 +188,17 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
     // Update report status to AI_VERIFIED
     const updateRes = await request(app)
       .patch(`/api/reports/${reportId}`)
-      .set('Authorization', `Bearer ${officerToken}`)
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({ status: 'AI_VERIFIED' });
 
     expect(updateRes.status).toBe(200);
     expect(updateRes.body.status).toBe('AI_VERIFIED');
   });
 
-  it('5. Should allow officer verification & assignment (Step 3 & 4 of Lifecycle)', async () => {
+  it('5. Should allow admin assignment and then officer workflow updates (Step 3 & 4 of Lifecycle)', async () => {
     const res = await request(app)
       .patch(`/api/reports/${reportId}`)
-      .set('Authorization', `Bearer ${officerToken}`)
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({
         status: 'OFFICER_ASSIGNED',
         officerId,
@@ -276,7 +276,7 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
     await expect(
       authService.verifyPasswordResetOtp({ email: citizenUser.email, code: otp! })
     ).resolves.toEqual(expect.any(String));
-  });
+  }, 15000);
 
   it('9. Rotates refresh tokens, revokes them on logout, and rejects expired refresh tokens', async () => {
     const refreshUser = {

@@ -2,8 +2,26 @@ import fs from 'fs';
 import path from 'path';
 import prisma from '../config/db';
 import { env } from '../config/env';
+import { AppError } from '../middleware/errorHandler';
 
 const AI_SERVICE_URL = env.AI_SERVICE_URL;
+const REPORT_UPLOADS_DIRECTORY = path.resolve(process.cwd(), 'uploads', 'reports');
+
+const resolveReportImagePath = (imageUrl: string): string => {
+  const relativePath = imageUrl.replace(/^\/+/, '');
+  const localPath = path.resolve(process.cwd(), relativePath);
+  const relativeToUploads = path.relative(REPORT_UPLOADS_DIRECTORY, localPath);
+
+  if (
+    !imageUrl.startsWith('/uploads/reports/') ||
+    relativeToUploads.startsWith('..') ||
+    path.isAbsolute(relativeToUploads)
+  ) {
+    throw new AppError('Invalid report image reference', 400);
+  }
+
+  return localPath;
+};
 
 interface AIDetectionResult {
   class_name: string;
@@ -30,7 +48,7 @@ export const analyzeReportImage = async (
 ): Promise<any | null> => {
   let timeoutId: NodeJS.Timeout | undefined;
   try {
-    const localPath = path.join(process.cwd(), imageUrl.replace(/^\//, ''));
+    const localPath = resolveReportImagePath(imageUrl);
 
     if (!fs.existsSync(localPath)) {
       console.warn(`[AI Service Integration] File not found at ${localPath}`);

@@ -244,6 +244,8 @@ export const revokeRefreshToken = async (token?: string): Promise<void> => {
   }
 };
 
+/* Superseded reset implementation retained only as source history; do not execute. */
+/*
 export const requestPasswordReset = async ({ email }: ForgotPasswordInput) => {
   const normalizedEmail = email.trim().toLowerCase();
   console.log(`🔍 [AuthService] Password reset requested for email: "${email}" (normalized: "${normalizedEmail}")`);
@@ -274,6 +276,33 @@ export const requestPasswordReset = async ({ email }: ForgotPasswordInput) => {
   console.log('📧 [AuthService] Calling sendOtpEmail...');
   await sendOtpEmail(user.email, otp);
   console.log('✅ [AuthService] Returned from sendOtpEmail successfully');
+  return otp;
+};
+*/
+
+export const requestPasswordReset = async ({ email }: ForgotPasswordInput): Promise<string | null> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+  // Use the same external response for known and unknown accounts.
+  if (!user) return null;
+
+  const otp = randomInt(100000, 1000000).toString();
+  if (process.env.NODE_ENV === 'development') {
+    console.info('[AuthService] Password reset OTP generated:', otp);
+  }
+
+  await prisma.$transaction([
+    prisma.passwordReset.deleteMany({ where: { userId: user.id } }),
+    prisma.passwordReset.create({
+      data: {
+        userId: user.id,
+        otpHash: await hashPassword(otp),
+        expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+      },
+    }),
+  ]);
+  await sendOtpEmail(user.email, otp);
   return otp;
 };
 

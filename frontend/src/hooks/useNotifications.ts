@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Notification } from '../types/notification';
 import * as service from '../services/notificationService';
+import { useAuth } from '../context/AuthContext';
+import { getSocket, joinUserRoom } from '../services/socketService';
 
 let listeners: Array<(notifications: Notification[]) => void> = [];
 
@@ -9,13 +11,44 @@ const notifyListeners = (newNotifications: Notification[]) => {
 };
 
 export const useNotifications = () => {
-  const [notifications, setNotifications] = useState<Notification[]>(() =>
-    service.getNotifications()
-  );
+  const { currentUser, isAuthenticated } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const loadNotifications = useCallback(async () => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await service.fetchNotifications();
+      setNotifications(data.notifications);
+      setUnreadCount(data.unreadCount);
+      notifyListeners(data.notifications);
+    } catch (err: any) {
+      console.error('Failed to load notifications:', err);
+      setError(err.message || 'Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    void loadNotifications();
+  }, [loadNotifications]);
+
+  // Sync state across multiple hook instances
   useEffect(() => {
     const handleUpdate = (updatedList: Notification[]) => {
       setNotifications(updatedList);
+      setUnreadCount(updatedList.filter((n) => !n.read).length);
     };
 
     listeners.push(handleUpdate);
@@ -25,37 +58,82 @@ export const useNotifications = () => {
     };
   }, []);
 
-  const markAsRead = useCallback((id: string) => {
-    const updated = service.markAsRead(id);
-    notifyListeners(updated);
-  }, []);
+  // Realtime Socket.IO listener for incoming notifications
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) return;
 
-  const markAllAsRead = useCallback(() => {
-    const updated = service.markAllAsRead();
-    notifyListeners(updated);
-  }, []);
+    joinUserRoom(currentUser);
+    const socket = getSocket();
 
-  const deleteNotification = useCallback((id: string) => {
-    const updated = service.deleteNotification(id);
-    notifyListeners(updated);
-  }, []);
+    const handleRealtimeNotification = (incoming: Notification) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n.id === incoming.id)) {
+          return prev;
+        }
+        const updated = [incoming, ...prev];
+        notifyListeners(updated);
+        return updated;
+      });
+      setUnreadCount((prev) => prev + (incoming.read ? 0 : 1));
+    };
 
-  const createNotification = useCallback(
-    (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
-      const updated = service.createNotification(notification);
+    socket.on('notification', handleRealtimeNotification);
+
+    return () => {
+      socket.off('notification', handleRealtimeNotification);
+    };
+  }, [isAuthenticated, currentUser]);
+
+  const markAsRead = useCallback(async (id: string) => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
       notifyListeners(updated);
-    },
-    []
-  );
+      return updated;
+    });
+    setUnreadCount((prev) => Math.max(0, prev - 1));
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+    const result = await service.markAsRead(id);
+    if (!result) {
+      void loadNotifications();
+    }
+  }, [loadNotifications]);
+
+  const markAllAsRead = useCallback(async () => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => ({ ...n, read: true }));
+      notifyListeners(updated);
+      return updated;
+    });
+    setUnreadCount(0);
+
+    await service.markAllAsRead();
+  }, []);
+
+  const deleteNotification = useCallback(async (id: string) => {
+    setNotifications((prev) => {
+      const target = prev.find((n) => n.id === id);
+      if (target && !target.read) {
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
+      const updated = prev.filter((n) => n.id !== id);
+      notifyListeners(updated);
+      return updated;
+    });
+
+    const success = await service.deleteNotification(id);
+    if (!success) {
+      void loadNotifications();
+    }
+  }, [loadNotifications]);
 
   return {
     notifications,
     unreadCount,
+    loading,
+    error,
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    createNotification,
+    refreshNotifications: loadNotifications,
   };
 };

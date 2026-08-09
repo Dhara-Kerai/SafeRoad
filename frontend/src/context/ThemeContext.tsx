@@ -1,4 +1,3 @@
-// Lightweight theme state; persistence can be added with authentication settings later.
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 type Theme = 'light' | 'dark';
@@ -9,10 +8,14 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>(() => {
+    const savedTheme = localStorage.getItem('saferoad-theme');
+    return savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : 'light';
+  });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    localStorage.setItem('saferoad-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {

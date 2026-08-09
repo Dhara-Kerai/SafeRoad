@@ -1,3 +1,11 @@
-// Summary card shown before local placeholder submission.
 import type { ReportRequest } from '../../types/Report';
-export const ReviewCard = ({ report }: { report: ReportRequest }) => <div className="report-card review-card">{report.image && <img src={report.image} alt="Reported pothole" />}<h2>Review your report</h2><p><strong>Location:</strong> {report.location.roadName}, {report.location.city}</p><p><strong>Description:</strong> {report.description}</p><p><strong>Severity:</strong> {report.severity}</p><p><strong>Road type:</strong> {report.roadType}</p><p><strong>AI result:</strong> {report.aiResult.damageType} · {report.aiResult.confidence}</p></div>;
+
+export const ReviewCard = ({ report }: { report: ReportRequest }) => <div className="report-card review-card">
+  {report.image && <img src={report.image} alt="Reported pothole" />}
+  <h2>Review your report</h2>
+  <p><strong>Location:</strong> {report.location.roadName}, {report.location.city}</p>
+  <p><strong>Description:</strong> {report.description}</p>
+  <p><strong>Severity:</strong> {report.severity}</p>
+  <p><strong>Road type:</strong> {report.roadType}</p>
+  <p><strong>AI analysis:</strong> Starts automatically after submission. The real result will appear in Report Details.</p>
+</div>;

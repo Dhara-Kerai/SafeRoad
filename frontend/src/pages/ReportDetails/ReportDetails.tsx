@@ -120,10 +120,11 @@ export const ReportDetails = () => {
   const statusOptions = [
     { label: 'Reported', value: 'REPORTED' },
     { label: 'AI Verified', value: 'AI_VERIFIED' },
-    { label: 'Officer Verified', value: 'OFFICER_VERIFIED' },
-    { label: 'Repair Assigned', value: 'ASSIGNED' },
+    { label: 'Officer Assigned', value: 'OFFICER_ASSIGNED' },
     { label: 'Under Repair', value: 'IN_PROGRESS' },
-    { label: 'Completed', value: 'CLOSED' }
+    { label: 'Completed', value: 'FIXED' },
+    { label: 'Needs Review', value: 'NEEDS_REVIEW' },
+    { label: 'Rejected', value: 'REJECTED' },
   ];
 
   return (

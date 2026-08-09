@@ -20,6 +20,40 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.NODE_ENV === 'production') {
+    const insecurePlaceholders = [
+      'secret',
+      'supersecret',
+      'change-me',
+      'default-secret',
+      'generate_your_secure_random_secret_key_here',
+      'saferoad-internal-secret-2026',
+    ];
+    if (
+      data.JWT_SECRET.length < 32 ||
+      insecurePlaceholders.includes(data.JWT_SECRET.toLowerCase())
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['JWT_SECRET'],
+        message:
+          'In production, JWT_SECRET must be at least 32 characters long and not use default placeholder values.',
+      });
+    }
+
+    if (
+      data.AI_INTERNAL_API_KEY.length < 16 ||
+      insecurePlaceholders.includes(data.AI_INTERNAL_API_KEY.toLowerCase())
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AI_INTERNAL_API_KEY'],
+        message:
+          'In production, AI_INTERNAL_API_KEY must be at least 16 characters long and not use default placeholder values.',
+      });
+    }
+  }
 });
 
 

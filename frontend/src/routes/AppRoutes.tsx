@@ -45,7 +45,9 @@ export const AppRoutes = () => {
         <Route path="/report-pothole" element={<ProtectedRoute><MainLayout><ReportProvider><ReportPothole /></ReportProvider></MainLayout></ProtectedRoute>} />
         <Route path="/report-success" element={<ProtectedRoute><MainLayout><ReportProvider><ReportSuccess /></ReportProvider></MainLayout></ProtectedRoute>} />
         <Route path="/my-reports" element={<ProtectedRoute><MainLayout><MyReports /></MainLayout></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><MainLayout><MyReports /></MainLayout></ProtectedRoute>} />
         <Route path="/report/:reportId" element={<ProtectedRoute><MainLayout><ReportDetails /></MainLayout></ProtectedRoute>} />
+        <Route path="/reports/:reportId" element={<ProtectedRoute><MainLayout><ReportDetails /></MainLayout></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

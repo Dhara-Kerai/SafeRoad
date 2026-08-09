@@ -105,6 +105,10 @@ export const getReports = async (
             user: { select: { id: true, fullName: true, email: true } },
           },
         },
+        attachments: true,
+        aiResults: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     }),
     prisma.report.count({ where }),
@@ -258,6 +262,10 @@ export const deleteReport = async (
     throw new AppError('Access forbidden to delete this report', 403);
   }
 
+  if (user.role === 'OFFICER') {
+    throw new AppError('Officers are not permitted to delete reports', 403);
+  }
+
   await prisma.report.delete({
     where: { id },
   });
@@ -304,21 +312,15 @@ export const getComments = async (
 
 export const addComment = async (
   reportId: string,
-  userId: string,
+  user: { userId: string; role: string },
   content: string
 ) => {
-  const report = await prisma.report.findUnique({
-    where: { id: reportId },
-  });
-
-  if (!report) {
-    throw new AppError('Report not found', 404);
-  }
+  await getReportById(reportId, user);
 
   const newComment = await prisma.comment.create({
     data: {
       reportId,
-      userId,
+      userId: user.userId,
       content,
     },
     include: {
@@ -355,5 +357,3 @@ export const getMapReports = async () => {
     },
   });
 };
-
-

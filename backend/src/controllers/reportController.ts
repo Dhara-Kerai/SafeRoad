@@ -6,6 +6,8 @@ import {
 import * as reportService from '../services/reportService';
 import { AppError } from '../middleware/errorHandler';
 import { analyzeReportImage } from '../services/aiService';
+import { NotificationType } from '@prisma/client';
+import * as notificationService from '../services/notificationService';
 import * as socketService from '../services/socketService';
 import prisma from '../config/db';
 
@@ -67,22 +69,41 @@ export const create = async (
     // 1. Emit Report Created websocket event
     socketService.emitReportCreated(report);
 
-    // 2. Broadcast generic notification to Admins
-    socketService.emitNotification(['admin'], {
-      title: 'New Pothole Report',
-      message: `A new report "${report.title}" was submitted in ${report.city}.`,
-      type: 'REPORT_CREATED',
+    // 2. Persist notification for report creator
+    await notificationService.createNotification({
+      userId: report.userId,
+      title: 'Report Submitted',
+      message: `Your report "${report.title}" was submitted successfully.`,
+      type: NotificationType.REPORT,
       reportId: report.id,
     });
 
-    // 3. Emit AI Analysis notifications to user and admin rooms
+    // 3. Persist notification for Admin users
+    const adminUsers = await prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    });
+    for (const admin of adminUsers) {
+      if (admin.id !== report.userId) {
+        await notificationService.createNotification({
+          userId: admin.id,
+          title: 'New Pothole Report',
+          message: `A new report "${report.title}" was submitted in ${report.city}.`,
+          type: NotificationType.ADMIN,
+          reportId: report.id,
+        });
+      }
+    }
+
+    // 4. Persist AI Analysis notification if AI analyzed
     if (aiResult) {
-      socketService.emitNotification([`user:${report.userId}`, 'admin'], {
-        title: 'AI Analysis Completed',
+      await notificationService.createNotification({
+        userId: report.userId,
+        title: 'AI Verification Completed',
         message: aiResult.potholeDetected
           ? `AI verified pothole in report "${report.title}" with confidence ${Math.round(aiResult.confidenceScore * 100)}%.`
           : `AI finished analysis of report "${report.title}". No potholes were detected.`,
-        type: 'AI_ANALYSIS',
+        type: aiResult.potholeDetected ? NotificationType.SUCCESS : NotificationType.WARNING,
         reportId: report.id,
       });
     }
@@ -239,7 +260,7 @@ export const update = async (
     // 1. Emit base report-updated event
     socketService.emitReportUpdated(report);
 
-    // 2. Emit status changed events
+    // 2. Emit status changed events & persist DB notification
     if (oldStatus !== newStatus) {
       socketService.emitStatusChanged(
         report.id,
@@ -249,34 +270,46 @@ export const update = async (
         report.officerId || undefined
       );
 
-      socketService.emitNotification(
-        [
-          `user:${report.userId}`,
-          'admin',
-          ...(report.officerId ? [`officer:${report.officerId}`] : []),
-        ],
-        {
-          title: 'Status Updated',
-          message: `The status of report #${report.id} was updated from ${oldStatus} to ${newStatus}.`,
-          type: 'STATUS_CHANGE',
-          reportId: report.id,
-        }
-      );
+      const notifType = newStatus === 'FIXED' ? NotificationType.SUCCESS : (newStatus === 'REJECTED' ? NotificationType.WARNING : NotificationType.REPORT);
+      const statusText = newStatus === 'FIXED' ? 'Resolved' : (newStatus === 'IN_PROGRESS' ? 'Under Repair' : (newStatus === 'OFFICER_ASSIGNED' ? 'Assigned' : newStatus));
+
+      await notificationService.createNotification({
+        userId: report.userId,
+        title: newStatus === 'FIXED' ? 'Road Repair Completed' : 'Report Status Updated',
+        message: `Your report "${report.title}" is now ${statusText}.`,
+        type: notifType,
+        reportId: report.id,
+      });
     }
 
-    // 3. Emit report assigned event
+    // 3. Emit report assigned event & persist DB notification
     if (newOfficerId && oldOfficerId !== newOfficerId) {
       socketService.emitReportAssigned(report.id, newOfficerId);
 
-      socketService.emitNotification(
-        [`officer:${newOfficerId}`],
-        {
-          title: 'New Assignment',
-          message: `You have been assigned to pothole report #${report.id}.`,
-          type: 'ASSIGNMENT',
+      const officerRecord = await prisma.officer.findUnique({
+        where: { id: newOfficerId },
+        select: { userId: true },
+      });
+
+      if (officerRecord?.userId) {
+        await notificationService.createNotification({
+          userId: officerRecord.userId,
+          title: 'Officer Assigned',
+          message: `You have been assigned to pothole report "${report.title}".`,
+          type: NotificationType.ASSIGNMENT,
           reportId: report.id,
-        }
-      );
+        });
+      }
+
+      if (report.userId) {
+        await notificationService.createNotification({
+          userId: report.userId,
+          title: 'Officer Assigned',
+          message: `An officer has been assigned to inspect and resolve your report "${report.title}".`,
+          type: NotificationType.ASSIGNMENT,
+          reportId: report.id,
+        });
+      }
     }
 
     const formattedReport = {
@@ -355,7 +388,7 @@ export const addComment = async (
       return next(new AppError('Comment text is required', 400));
     }
 
-    const comment = await reportService.addComment(id, req.user.userId, content);
+    const comment = await reportService.addComment(id, req.user, content);
     res.status(201).json(comment);
   } catch (error) {
     next(error);
@@ -377,5 +410,4 @@ export const getMapReports = async (
     next(error);
   }
 };
-
 

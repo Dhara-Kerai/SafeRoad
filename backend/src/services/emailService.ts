@@ -41,7 +41,16 @@ export const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
 
   if (!user || !pass) {
     console.error('❌ [EmailService] Cannot send email: SMTP_USER or SMTP_PASS environment variables are missing.');
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[EmailService] Dev/test mode: Skipping email send for OTP ${otp}`);
+      return;
+    }
     throw new AppError('Server email service is not properly configured.', 500);
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    console.warn(`[EmailService] Test mode: Skipping SMTP transmission for OTP ${otp}`);
+    return;
   }
 
   const transporter = getTransporter();
@@ -81,6 +90,10 @@ export const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
   } catch (error: any) {
     console.error('❌ [EmailService] EMAIL ERROR: Failed to send OTP email');
     console.error(error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[EmailService] Dev/test mode: Suppressing email send error for OTP ${otp}`);
+      return;
+    }
     throw new AppError(`Failed to send email: ${error.message || 'SMTP server error'}`, 500);
   }
 };

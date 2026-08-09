@@ -1,12 +1,15 @@
 // Citizen report catalogue with frontend-only filters and view controls.
 import { useEffect, useMemo, useState } from 'react';
-import { getMyReports } from '../../services/reportManagementService';
+import { getAssignedReports, getMyReports } from '../../services/reportManagementService';
 import { ReportCard } from '../../components/reportManagement/ReportCard';
 import { ReportStatistics } from '../../components/reportManagement/ReportStatistics';
 import type { ManagedReport } from '../../types/reportManagement';
+import { useAuth } from '../../context/AuthContext';
 import './MyReports.css';
 
 export const MyReports = () => {
+  const { currentUser } = useAuth();
+  const isOfficer = currentUser?.role === 'municipal_officer';
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('All');
   const [severity, setSeverity] = useState('All');
@@ -22,7 +25,7 @@ export const MyReports = () => {
     let active = true;
     setLoading(true);
     setError(null);
-    getMyReports({ page: 1, size: 100 })
+    (isOfficer ? getAssignedReports : getMyReports)({ page: 1, size: 100 })
       .then((data) => {
         if (active) {
           setAllReports(data.items);
@@ -38,7 +41,7 @@ export const MyReports = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isOfficer]);
 
   const reports = useMemo(() => {
     return allReports
@@ -65,9 +68,9 @@ export const MyReports = () => {
     return (
       <main className="my-reports">
         <header>
-          <p className="eyebrow">CITIZEN REPORTING</p>
-          <h1>My Reports</h1>
-          <p>Track each road-safety report from submission to completion.</p>
+          <p className="eyebrow">{isOfficer ? 'OPERATIONS' : 'CITIZEN REPORTING'}</p>
+          <h1>{isOfficer ? 'Assigned Reports' : 'My Reports'}</h1>
+          <p>{isOfficer ? 'Review and update reports assigned to you.' : 'Track each road-safety report from submission to completion.'}</p>
         </header>
         <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--muted)' }}>
           <p>Loading reports...</p>
@@ -80,9 +83,9 @@ export const MyReports = () => {
     return (
       <main className="my-reports">
         <header>
-          <p className="eyebrow">CITIZEN REPORTING</p>
-          <h1>My Reports</h1>
-          <p>Track each road-safety report from submission to completion.</p>
+          <p className="eyebrow">{isOfficer ? 'OPERATIONS' : 'CITIZEN REPORTING'}</p>
+          <h1>{isOfficer ? 'Assigned Reports' : 'My Reports'}</h1>
+          <p>{isOfficer ? 'Review and update reports assigned to you.' : 'Track each road-safety report from submission to completion.'}</p>
         </header>
         <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--error)' }}>
           <p>Error: {error}</p>
@@ -94,9 +97,9 @@ export const MyReports = () => {
   return (
     <main className="my-reports">
       <header>
-        <p className="eyebrow">CITIZEN REPORTING</p>
-        <h1>My Reports</h1>
-        <p>Track each road-safety report from submission to completion.</p>
+        <p className="eyebrow">{isOfficer ? 'OPERATIONS' : 'CITIZEN REPORTING'}</p>
+        <h1>{isOfficer ? 'Assigned Reports' : 'My Reports'}</h1>
+        <p>{isOfficer ? 'Review and update reports assigned to you.' : 'Track each road-safety report from submission to completion.'}</p>
       </header>
       <ReportStatistics reports={allReports} />
       <section className="report-filter-bar">
@@ -161,4 +164,3 @@ export const MyReports = () => {
     </main>
   );
 };
-

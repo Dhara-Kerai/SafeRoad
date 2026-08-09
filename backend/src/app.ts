@@ -12,6 +12,7 @@ import reportRoutes from './routes/reportRoutes';
 import uploadRoutes from './routes/uploadRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import userRoutes from './routes/userRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 const app: Express = express();
 
@@ -48,6 +49,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response): void => {

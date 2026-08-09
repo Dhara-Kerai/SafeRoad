@@ -11,8 +11,15 @@ import './Notifications.css';
 
 export const Notifications: React.FC = () => {
   const navigate = useNavigate();
-  const { notifications, markAsRead, markAllAsRead, deleteNotification } =
-    useNotifications();
+  const {
+    notifications,
+    loading,
+    error,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    refreshNotifications,
+  } = useNotifications();
 
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,7 +97,24 @@ export const Notifications: React.FC = () => {
       />
 
       <section className="notification-list" role="list">
-        {filteredNotifications.length === 0 ? (
+        {loading ? (
+          <div className="notification-empty">
+            <p>Loading notifications...</p>
+          </div>
+        ) : error ? (
+          <div className="notification-empty">
+            <FiInbox size={48} />
+            <h3>Unable to load notifications</h3>
+            <p>{error}</p>
+            <button
+              type="button"
+              className="notification-item__report-btn"
+              onClick={() => void refreshNotifications()}
+            >
+              Retry
+            </button>
+          </div>
+        ) : filteredNotifications.length === 0 ? (
           <div className="notification-empty">
             <FiInbox size={48} />
             <h3>No notifications found</h3>

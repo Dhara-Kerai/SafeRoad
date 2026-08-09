@@ -1,13 +1,23 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { SOCKET_EVENTS } from './events';
+import { env } from '../config/env';
 
 let io: SocketIOServer | null = null;
 
 export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
+  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
+
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: '*', // For development, customize origins in production
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error(`Not allowed by CORS: ${origin}`));
+        }
+      },
+      credentials: true,
       methods: ['GET', 'POST'],
     },
   });

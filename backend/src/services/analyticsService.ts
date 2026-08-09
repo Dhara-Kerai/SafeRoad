@@ -46,6 +46,39 @@ export const getDashboardStats = async (user?: { userId: string; role: string })
     };
   }
 
+  if (user?.role === 'USER') {
+    const [
+      totalReports,
+      resolvedReports,
+      pendingReports,
+      inProgressReports,
+      highSeverity,
+      mediumSeverity,
+      lowSeverity,
+      aiVerifiedReports,
+    ] = await Promise.all([
+      prisma.report.count({ where: { userId: user.userId } }),
+      prisma.report.count({ where: { userId: user.userId, status: 'FIXED' } }),
+      prisma.report.count({ where: { userId: user.userId, status: { in: ['REPORTED', 'AI_VERIFIED'] } } }),
+      prisma.report.count({ where: { userId: user.userId, status: { in: ['OFFICER_ASSIGNED', 'IN_PROGRESS'] } } }),
+      prisma.report.count({ where: { userId: user.userId, severity: { in: ['HIGH', 'CRITICAL'] } } }),
+      prisma.report.count({ where: { userId: user.userId, severity: 'MEDIUM' } }),
+      prisma.report.count({ where: { userId: user.userId, severity: 'LOW' } }),
+      prisma.report.count({ where: { userId: user.userId, status: 'AI_VERIFIED' } }),
+    ]);
+
+    return {
+      totalReports,
+      resolvedReports,
+      pendingReports,
+      inProgressReports,
+      highSeverity,
+      mediumSeverity,
+      lowSeverity,
+      aiVerifiedReports,
+    };
+  }
+
   const [
     totalReports,
     resolvedReports,

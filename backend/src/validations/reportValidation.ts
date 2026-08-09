@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { ReportStatus, Severity } from '@prisma/client';
 
+const reportImageUrlSchema = z.string().regex(
+  /^\/uploads\/reports\/\d{4}\/\d{2}\/[A-Za-z0-9-]+\.(?:jpe?g|png|webp)$/i,
+  'Image must reference an uploaded report image'
+);
+
 export const createReportSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(100),
   description: z.string().min(10, 'Description must be at least 10 characters'),
@@ -9,7 +14,7 @@ export const createReportSchema = z.object({
   address: z.string().min(1, 'Address is required'),
   city: z.string().min(1, 'City is required'),
   severity: z.nativeEnum(Severity).optional(),
-  imageUrl: z.string().optional(),
+  imageUrl: reportImageUrlSchema.optional(),
 });
 
 export const updateReportSchema = z.object({
@@ -23,6 +28,7 @@ export const updateReportSchema = z.object({
   status: z.nativeEnum(ReportStatus).optional(),
   departmentId: z.string().nullable().optional(),
   officerId: z.string().nullable().optional(),
+  imageUrl: reportImageUrlSchema.optional(),
 });
 
 export type CreateReportInput = z.infer<typeof createReportSchema>;
