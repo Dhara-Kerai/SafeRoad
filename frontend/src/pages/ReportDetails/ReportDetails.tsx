@@ -1,11 +1,12 @@
 // Full citizen report view with backend integration and workflow status updates.
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getReportById, updateReportStatus, assignOfficerToReport } from '../../services/reportManagementService';
 import { fetchOfficers } from '../../services/adminService';
 import { CommentSection } from '../../components/reportManagement/CommentSection';
 import { ReportTimeline } from '../../components/reportManagement/ReportTimeline';
 import { SeverityBadge, StatusBadge } from '../../components/reportManagement/ReportBadges';
+import { AIResultCard } from '../../components/report/AIResultCard';
 import { getServerUrl } from '../../services/reportService';
 import { useAuth } from '../../context/AuthContext';
 import type { ManagedReport } from '../../types/reportManagement';
@@ -31,7 +32,7 @@ export const ReportDetails = () => {
   const isOfficer = currentUser?.role === 'municipal_officer' || currentUser?.role === 'admin';
   const isAdmin = currentUser?.role === 'admin';
 
-  const loadReport = () => {
+  const loadReport = useCallback(() => {
     if (!reportId) return;
     setLoading(true);
     setError(null);
@@ -47,11 +48,11 @@ export const ReportDetails = () => {
         setError(err.message || 'Failed to load report');
         setLoading(false);
       });
-  };
+  }, [reportId]);
 
   useEffect(() => {
     loadReport();
-  }, [reportId]);
+  }, [loadReport]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -187,9 +188,9 @@ export const ReportDetails = () => {
               <div>
                 <dt>AI prediction</dt>
                 <dd>
-                  {report.aiVerified ? (
+                  {report.aiResult || report.aiDetails || report.aiConfidence !== undefined ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span>Verified pothole</span>
+                      <span>{report.aiVerified ? 'Pothole detected' : 'No pothole detected'}</span>
                       {report.aiConfidence !== undefined && report.aiConfidence !== null && (
                         <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
                           Confidence: {Math.round(report.aiConfidence * 100)}%
@@ -202,7 +203,7 @@ export const ReportDetails = () => {
                       )}
                     </div>
                   ) : (
-                    'Pending verification'
+                    'No AI result stored yet'
                   )}
                 </dd>
               </div>
@@ -226,6 +227,10 @@ export const ReportDetails = () => {
               <div>Future repair image</div>
             </div>
           </section>
+
+          <div style={{ margin: '20px 0' }}>
+            <AIResultCard result={report.aiResult} report={report} />
+          </div>
           
           {reportId && <CommentSection reportId={reportId} />}
         </div>

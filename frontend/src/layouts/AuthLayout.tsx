@@ -1,6 +1,6 @@
-// Split authentication shell shared by all public account-management pages.
 import type { ReactNode } from 'react';
-import { FiCheckCircle } from 'react-icons/fi';
+import { FiCheckCircle, FiMoon, FiSun } from 'react-icons/fi';
+import { useTheme } from '../context/ThemeContext';
 
 import '../components/auth/Auth.css';
 import './AuthLayout.css';
@@ -17,8 +17,20 @@ const platformFeatures = [
 ];
 
 export const AuthLayout = ({ children }: AuthLayoutProps) => {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <div className="auth-layout">
+      <button
+        type="button"
+        className="auth-theme-toggle"
+        aria-label="Toggle theme"
+        title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+        onClick={toggleTheme}
+      >
+        {theme === 'light' ? <FiMoon /> : <FiSun />}
+      </button>
+
       <section className="auth-layout__intro">
         <div className="auth-layout__brand">
           <span className="auth-layout__logo">S</span>

@@ -351,9 +351,22 @@ export const getMapReports = async () => {
       severity: true,
       status: true,
       createdAt: true,
+      address: true,
+      city: true,
+      description: true,
+      user: { select: { fullName: true } },
+      department: { select: { name: true } },
+      officer: {
+        include: {
+          user: { select: { fullName: true } },
+        },
+      },
+      attachments: { select: { url: true }, take: 1 },
+      aiResults: { select: { confidenceScore: true, potholeDetected: true }, orderBy: { createdAt: 'desc' }, take: 1 },
     },
     orderBy: {
       createdAt: 'desc',
     },
   });
 };
+

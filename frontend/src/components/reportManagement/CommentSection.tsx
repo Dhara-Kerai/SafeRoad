@@ -1,5 +1,5 @@
 // Local-only comment interface that is ready to connect to a discussion API.
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { addComment, listComments } from '../../services/reportManagementService';
 import type { ReportComment } from '../../types/reportManagement';
 
@@ -9,7 +9,7 @@ export const CommentSection = ({ reportId }: { reportId: string }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadComments = () => {
+  const loadComments = useCallback(() => {
     setLoading(true);
     setError(null);
     listComments(reportId)
@@ -21,11 +21,11 @@ export const CommentSection = ({ reportId }: { reportId: string }) => {
         setError(err.message || 'Failed to load comments');
         setLoading(false);
       });
-  };
+  }, [reportId]);
 
   useEffect(() => {
     loadComments();
-  }, [reportId]);
+  }, [loadComments]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -1,10 +1,13 @@
-import { getBackendMapReports, type BackendMapReport } from './reportService';
+import { getBackendMapReports, getServerUrl, type BackendMapReport } from './reportService';
 import type { MapReport, MapSeverity, MapStatus } from '../types/map';
 
 export const mapBackendMapReportToMapReport = (r: BackendMapReport): MapReport => {
   const severity = mapSeverity(r.severity);
   const status = mapStatus(r.status);
   const dateStr = r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString();
+  const imageUrl = r.attachments?.[0]?.url || null;
+  const aiResult = r.aiResults?.[0];
+  const confidence = aiResult?.confidenceScore !== undefined ? Math.round(aiResult.confidenceScore * 100) : 0;
 
   return {
     id: r.id,
@@ -13,24 +16,24 @@ export const mapBackendMapReportToMapReport = (r: BackendMapReport): MapReport =
     longitude: Number(r.longitude),
     severity,
     status,
-    reporter: 'Citizen User',
-    address: 'Gujarat',
-    description: r.title || 'Road incident report',
+    reporter: r.user?.fullName || 'Citizen User',
+    address: r.address || r.city || 'India',
+    description: r.description || r.title || 'Road incident report',
     createdAt: dateStr,
     updatedAt: dateStr,
-    image: 'Evidence image pending upload',
+    image: imageUrl ? getServerUrl(imageUrl) : 'No evidence image uploaded',
     vehicleType: 'Car',
-    verificationStatus: r.status === 'REPORTED' ? 'Pending' : 'Officer Verified',
-    city: 'Gujarat',
+    verificationStatus: r.status === 'REPORTED' ? 'Pending' : (aiResult?.potholeDetected ? 'AI Verified' : 'Officer Verified'),
+    city: r.city || 'Unknown',
     incidentType: 'Pothole',
     priority: severity === 'Critical' ? 'Urgent' : severity === 'High' ? 'Priority' : 'Standard',
-    estimatedRepairCost: '₹10,000',
+    estimatedRepairCost: severity === 'Critical' ? '₹15,000' : severity === 'High' ? '₹10,000' : '₹5,000',
     estimatedRepairTime: severity === 'Critical' ? '4–8 hours' : '1–2 days',
-    assignedOfficer: 'Assigned Team',
-    department: 'Road Maintenance',
+    assignedOfficer: r.officer?.user?.fullName || 'Unassigned',
+    department: r.department?.name || 'Road Maintenance',
     citizenReports: 1,
-    aiConfidence: 85,
-    detectionMethod: 'Citizen mobile report',
+    aiConfidence: confidence,
+    detectionMethod: aiResult ? 'AI Automated Scan' : 'Citizen mobile report',
     imageTimestamp: dateStr,
     actionHistory: [{ status: 'Reported', date: dateStr }],
   };

@@ -38,10 +38,10 @@ export interface TimelineEvent {
 }
 
 export const quickActions: QuickAction[] = [
-  { label: 'Report Pothole', icon: FiPlus },
+  { label: 'Report Pothole', icon: FiPlus, path: '/report-pothole' },
   { label: 'Open Live Map', icon: FiMapPin, path: '/live-map' },
-  { label: 'Run AI Detection', icon: FiRadio },
-  { label: 'Create Complaint', icon: FiTool },
+  { label: 'Run AI Detection', icon: FiRadio, path: '/ai-detection' },
+  { label: 'Create Complaint', icon: FiTool, path: '/report-pothole' },
 ];
 
 export const dashboardMetrics: DashboardMetric[] = [

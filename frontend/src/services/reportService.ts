@@ -112,16 +112,34 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
   const aiResult = report.aiResults?.[0];
   const aiVerified = Boolean(aiResult?.potholeDetected);
   const aiConfidence = aiResult ? aiResult.confidenceScore : undefined;
-  
-  let aiSeverity = undefined;
+
+  let aiDetails: Record<string, unknown> | null = null;
+  let aiSeverity: string | undefined;
   if (aiResult && aiResult.details) {
     try {
-      const parsed = typeof aiResult.details === 'string' ? JSON.parse(aiResult.details) : aiResult.details;
-      aiSeverity = parsed.primarySeverity;
+      aiDetails = typeof aiResult.details === 'string' ? JSON.parse(aiResult.details) : aiResult.details;
+      aiSeverity = typeof aiDetails?.primarySeverity === 'string' ? aiDetails.primarySeverity : undefined;
     } catch (e) {
       console.warn('Failed to parse AIResult details:', e);
     }
   }
+
+  const normalizedAiResult = aiResult ? {
+    id: aiResult.id,
+    reportId: aiResult.reportId || report.id,
+    potholeDetected: Boolean(aiResult.potholeDetected),
+    confidence: typeof aiResult.confidenceScore === 'number'
+      ? `${Math.round(aiResult.confidenceScore * 100)}%`
+      : aiResult.confidenceScore,
+    confidenceScore: typeof aiResult.confidenceScore === 'number' ? aiResult.confidenceScore : undefined,
+    severity: aiSeverity || (aiResult.severity ? mapBackendSeverityToFrontend(aiResult.severity) : undefined),
+    damageType: typeof aiDetails?.detections === 'object' && Array.isArray(aiDetails.detections) && aiDetails.detections[0]
+      ? String((aiDetails.detections[0] as Record<string, unknown>).className || 'Not available')
+      : undefined,
+    priority: (aiSeverity || aiResult.severity || report.severity || '').toLowerCase().includes('critical') || (aiSeverity || aiResult.severity || report.severity || '').toLowerCase().includes('high') ? 'Urgent' : 'Standard',
+    details: aiDetails,
+    createdAt: aiResult.createdAt || report.created_at || report.createdAt,
+  } : null;
 
   const imageUrl = report.image_url || report.attachments?.[0]?.url || null;
 
@@ -147,6 +165,9 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
     image_url: imageUrl,
     aiConfidence,
     aiSeverity,
+    aiResult: normalizedAiResult,
+    aiDetails,
+    totalDetections: typeof aiDetails?.totalDetections === 'number' ? aiDetails.totalDetections : 0,
     reporterName,
     reporterEmail,
     assignedOfficerName,
@@ -213,7 +234,7 @@ export interface GetReportsParams {
   sort_by?: string;
 }
 
-const getReports = async (params: GetReportsParams = {}, mine = false) => {
+export const getReports = async (params: GetReportsParams = {}, mine = false) => {
   const query = new URLSearchParams();
   if (params.page) query.append('page', String(params.page));
   if (params.size) query.append('limit', String(params.size));
@@ -302,6 +323,14 @@ export const verifyReport = async (reportId: string, remarks?: string) => {
 };
 
 export const submitReport = async (report: ReportRequest) => {
+  const addressParts = [
+    report.location.roadName,
+    report.location.area,
+    report.location.landmark,
+    report.location.city,
+    report.location.state,
+  ].filter(Boolean);
+
   return requestJson<{ id: string }>('/reports', {
     method: 'POST',
     body: JSON.stringify({
@@ -310,7 +339,8 @@ export const submitReport = async (report: ReportRequest) => {
       severity: (report.severity || 'Medium').toUpperCase(),
       latitude: Number(report.location.latitude || 0),
       longitude: Number(report.location.longitude || 0),
-      address: [report.location.roadName, report.location.area, report.location.city].filter(Boolean).join(', '),
+      address: addressParts.join(', '),
+      city: report.location.city || 'Unknown',
       imageUrl: report.image,
     }),
   });
@@ -331,6 +361,14 @@ export interface BackendMapReport {
   severity: string;
   status: string;
   createdAt: string;
+  address?: string | null;
+  city?: string | null;
+  description?: string | null;
+  user?: { fullName: string } | null;
+  department?: { name: string } | null;
+  officer?: { user?: { fullName: string } } | null;
+  attachments?: Array<{ url: string }> | null;
+  aiResults?: Array<{ confidenceScore: number; potholeDetected: boolean }> | null;
 }
 
 export const getBackendMapReports = async (): Promise<BackendMapReport[]> => {

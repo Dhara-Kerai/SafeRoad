@@ -26,7 +26,7 @@ const navigationItems = [
   {
     label: 'AI Detection',
     icon: FiActivity,
-    path: '#',
+    path: '/ai-detection',
     roles: ['citizen', 'municipal_officer', 'admin'],
   },
 
@@ -40,7 +40,7 @@ const navigationItems = [
   {
     label: 'Repair Requests',
     icon: FiTool,
-    path: '#',
+    path: '/my-reports',
     roles: ['municipal_officer', 'admin'],
   },
 
@@ -90,6 +90,9 @@ export const Sidebar = () => {
     }
     if (path === '/my-reports') {
       return location.pathname === '/my-reports' || location.pathname.startsWith('/report/');
+    }
+    if (path === '/ai-detection') {
+      return location.pathname === '/ai-detection';
     }
     return location.pathname === path;
   };

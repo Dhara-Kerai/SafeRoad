@@ -113,7 +113,7 @@ export const analyzeReportImage = async (
       imageWidth: aiData.width,
       imageHeight: aiData.height,
       annotatedImagePath: aiData.annotated_image_path,
-      detections: aiData.detections.map((d) => ({
+      detections: sortedDetections.map((d) => ({
         className: d.class_name,
         confidence: d.confidence,
         box: d.box,

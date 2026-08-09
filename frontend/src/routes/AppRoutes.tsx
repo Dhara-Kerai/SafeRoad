@@ -8,6 +8,7 @@ import { Dashboard } from '../pages/Dashboard';
 import { ReportPothole } from '../pages/ReportPothole';
 import { ReportSuccess } from '../pages/ReportSuccess';
 import { MyReports } from '../pages/MyReports';
+import { AIDetection } from '../pages/AIDetection';
 import { ReportDetails } from '../pages/ReportDetails';
 import { Notifications } from '../pages/Notifications';
 import { ForgotPassword } from '../pages/ForgotPassword';
@@ -44,6 +45,7 @@ export const AppRoutes = () => {
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Admin /></MainLayout></ProtectedRoute>} />
         <Route path="/report-pothole" element={<ProtectedRoute><MainLayout><ReportProvider><ReportPothole /></ReportProvider></MainLayout></ProtectedRoute>} />
         <Route path="/report-success" element={<ProtectedRoute><MainLayout><ReportProvider><ReportSuccess /></ReportProvider></MainLayout></ProtectedRoute>} />
+        <Route path="/ai-detection" element={<ProtectedRoute allowedRoles={['citizen', 'municipal_officer', 'admin']}><MainLayout><AIDetection /></MainLayout></ProtectedRoute>} />
         <Route path="/my-reports" element={<ProtectedRoute><MainLayout><MyReports /></MainLayout></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute><MainLayout><MyReports /></MainLayout></ProtectedRoute>} />
         <Route path="/report/:reportId" element={<ProtectedRoute><MainLayout><ReportDetails /></MainLayout></ProtectedRoute>} />

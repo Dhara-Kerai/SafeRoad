@@ -1,4 +1,5 @@
 export {
+  getReports,
   getMyReports,
   getAssignedReports,
   getReportById,

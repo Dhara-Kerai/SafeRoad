@@ -55,7 +55,7 @@ export const Navbar = () => {
 
         <span className="navbar__location">
           <FiMapPin />
-          New Delhi
+          India
         </span>
 
         <button

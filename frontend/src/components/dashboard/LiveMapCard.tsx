@@ -8,7 +8,7 @@ export const LiveMapCard = () => {
       <header>
         <div>
           <h2>Live road safety map</h2>
-          <p>Real-time incident overview across New Delhi</p>
+          <p>Real-time incident overview across regional roads</p>
         </div>
         <Link className="text-button" to="/live-map">Open full map <FiArrowUpRight /></Link>
       </header>
