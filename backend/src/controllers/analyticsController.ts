@@ -31,7 +31,7 @@ export const getStatusDistribution = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!hasRole(req, ['USER', 'OFFICER', 'ADMIN'])) {
+    if (!hasRole(req, ['ADMIN'])) {
       return next(
         new AppError('Access forbidden: insufficient permissions', 403)
       );
@@ -49,7 +49,7 @@ export const getSeverityDistribution = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!hasRole(req, ['USER', 'OFFICER', 'ADMIN'])) {
+    if (!hasRole(req, ['ADMIN'])) {
       return next(
         new AppError('Access forbidden: insufficient permissions', 403)
       );
@@ -67,7 +67,7 @@ export const getReportsByCity = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!hasRole(req, ['USER', 'OFFICER', 'ADMIN'])) {
+    if (!hasRole(req, ['ADMIN'])) {
       return next(
         new AppError('Access forbidden: insufficient permissions', 403)
       );
@@ -85,12 +85,12 @@ export const getMonthlyTrends = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!hasRole(req, ['USER', 'OFFICER', 'ADMIN'])) {
+    if (!hasRole(req, ['ADMIN'])) {
       return next(
         new AppError('Access forbidden: insufficient permissions', 403)
       );
     }
-    const data = await analyticsService.getMonthlyTrends();
+    const data = await analyticsService.getMonthlyTrends(req.user);
     res.status(200).json(data);
   } catch (error) {
     next(error);
@@ -103,7 +103,7 @@ export const getDepartmentPerformance = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!hasRole(req, ['USER', 'OFFICER', 'ADMIN'])) {
+    if (!hasRole(req, ['ADMIN'])) {
       return next(
         new AppError('Access forbidden: insufficient permissions', 403)
       );
@@ -121,7 +121,7 @@ export const getOfficerPerformance = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!hasRole(req, ['USER', 'OFFICER', 'ADMIN'])) {
+    if (!hasRole(req, ['ADMIN'])) {
       return next(
         new AppError('Access forbidden: insufficient permissions', 403)
       );
@@ -139,7 +139,7 @@ export const getRecent = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (!hasRole(req, ['USER', 'OFFICER', 'ADMIN'])) {
+    if (!hasRole(req, ['ADMIN'])) {
       return next(
         new AppError('Access forbidden: insufficient permissions', 403)
       );

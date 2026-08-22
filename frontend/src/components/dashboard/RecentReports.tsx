@@ -8,7 +8,7 @@ export interface RecentReportsProps {
 
 const statusClassName = (status: string) => {
   const normalized = status.toLowerCase().replace(/_/g, '-');
-  if (normalized.includes('fixed') || normalized.includes('resolved') || normalized.includes('completed')) return 'verified';
+  if (normalized.includes('closed') || normalized.includes('resolved') || normalized.includes('completed')) return 'verified';
   if (normalized.includes('progress') || normalized.includes('repair') || normalized.includes('assigned')) return 'under-repair';
   if (normalized.includes('critical') || normalized.includes('high')) return 'critical';
   return 'reported';
@@ -27,7 +27,13 @@ const formatStatusLabel = (status: string) => {
     case 'IN_PROGRESS':
       return 'Under Repair';
     case 'FIXED':
-      return 'Resolved';
+      return 'Fixed — awaiting quality check';
+    case 'QUALITY_CHECK':
+      return 'Quality Check';
+    case 'COMPLETED':
+      return 'Completed';
+    case 'CLOSED':
+      return 'Closed';
     case 'REJECTED':
       return 'Rejected';
     default:
@@ -89,4 +95,3 @@ export const RecentReports = ({ reports = [], isLoading }: RecentReportsProps) =
     </aside>
   );
 };
-

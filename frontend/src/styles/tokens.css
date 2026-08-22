@@ -40,3 +40,10 @@
   --focus: #93c5fd;
   --shadow: 0 12px 32px rgba(0, 0, 0, .24);
 }
+
+/* Reduced motion preference override */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition: 0.01ms;
+  }
+}

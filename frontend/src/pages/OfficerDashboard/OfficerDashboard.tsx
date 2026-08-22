@@ -1,111 +1,40 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiAlertTriangle, FiCheckCircle, FiClipboard, FiClock, FiMapPin, FiShield } from 'react-icons/fi';
-import { authenticatedRequestJson } from '../../services/authService';
-import { mapBackendStatusToFrontend } from '../../services/reportService';
-import type { ReportStatus } from '../../types/reportManagement';
+import { FiCheckCircle, FiClipboard, FiClock, FiMapPin, FiTool } from 'react-icons/fi';
+import { SeverityBadge, StatusBadge } from '../../components/reportManagement/ReportBadges';
+import { useAuth } from '../../context/AuthContext';
+import { getOfficerWorkload, getServerUrl, mapBackendReportToManagedReport } from '../../services/reportService';
+import type { ManagedReport } from '../../types/reportManagement';
+import './OfficerDashboard.css';
 
-interface OfficerStats {
-  totalAssignedReports: number;
-  pendingVerification: number;
-  aiVerifiedReports: number;
-  reportsNeedsReview: number;
-  inRepair: number;
-  completedReports: number;
-}
-
-interface OfficerReportSummary {
-  id: string;
-  title: string;
-  city: string;
-  status: string;
-  severity: string;
-  createdAt: string;
-}
+interface OfficerStats { totalAssignedReports: number; pendingReports: number; inRepair: number; fixedReports: number; recentAssignments: unknown[]; }
 
 export const OfficerDashboard = () => {
+  const { currentUser } = useAuth();
   const [stats, setStats] = useState<OfficerStats | null>(null);
-  const [reports, setReports] = useState<OfficerReportSummary[]>([]);
+  const [reports, setReports] = useState<ManagedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [statsResponse, reportsResponse] = await Promise.all([
-          authenticatedRequestJson<{ status: string; data: OfficerStats }>('/analytics/dashboard'),
-          authenticatedRequestJson<{ status: string; data: OfficerReportSummary[] }>('/reports?limit=6'),
-        ]);
-
-        setStats(statsResponse.data);
-        setReports(reportsResponse.data ?? []);
-      } catch (err: any) {
-        setError(err.message || 'Unable to load officer dashboard.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void load();
-  }, []);
-
-  const statCards = useMemo(() => [
-    { label: 'Assigned reports', value: stats?.totalAssignedReports ?? 0, icon: FiClipboard },
-    { label: 'Pending verification', value: stats?.pendingVerification ?? 0, icon: FiClock },
-    { label: 'AI verified', value: stats?.aiVerifiedReports ?? 0, icon: FiShield },
-    { label: 'Needs review', value: stats?.reportsNeedsReview ?? 0, icon: FiAlertTriangle },
-    { label: 'In repair', value: stats?.inRepair ?? 0, icon: FiMapPin },
-    { label: 'Completed', value: stats?.completedReports ?? 0, icon: FiCheckCircle },
+  useEffect(() => { void getOfficerWorkload().then((response) => { setStats(response.data); setReports((response.data.recentAssignments ?? []).map(mapBackendReportToManagedReport)); }).catch((err: Error) => setError(err.message || 'Unable to load officer dashboard.')).finally(() => setLoading(false)); }, []);
+  const cards = useMemo(() => [
+    { label: 'Total assigned', value: stats?.totalAssignedReports ?? 0, Icon: FiClipboard },
+    { label: 'Pending', value: stats?.pendingReports ?? 0, Icon: FiClock },
+    { label: 'In repair', value: stats?.inRepair ?? 0, Icon: FiTool },
+    { label: 'Fixed', value: stats?.fixedReports ?? 0, Icon: FiCheckCircle },
   ], [stats]);
-
-  if (loading) {
-    return <main style={{ padding: '24px' }}>Loading officer dashboard…</main>;
-  }
-
-  return (
-    <main style={{ padding: '24px', display: 'grid', gap: '24px' }}>
-      <header>
-        <p className="eyebrow">OPERATIONS</p>
-        <h1>Officer Dashboard</h1>
-        <p style={{ color: 'var(--muted)', marginTop: '6px' }}>Monitor reports that require verification, review, or repair activity.</p>
-      </header>
-
-      {error ? <div className="auth-error-banner">{error}</div> : null}
-
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-        {statCards.map(({ label, value, icon: Icon }) => (
-          <article key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', display: 'grid', gap: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--muted)', fontSize: '13px' }}>{label}</span>
-              <Icon size={16} />
-            </div>
-            <strong style={{ fontSize: '24px' }}>{value}</strong>
-          </article>
-        ))}
-      </section>
-
-      <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h2 style={{ margin: 0 }}>Recent reports</h2>
-          <Link to="/my-reports" style={{ color: 'var(--primary)' }}>View all</Link>
-        </div>
-        {reports.length === 0 ? <p>No assigned reports available yet.</p> : (
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {reports.map((report) => (
-              <div key={report.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                <div>
-                  <strong style={{ display: 'block' }}>{report.title}</strong>
-                  <span style={{ color: 'var(--muted)', fontSize: '13px' }}>{report.city} • {new Date(report.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ color: 'var(--muted)', fontSize: '13px' }}>{mapBackendStatusToFrontend(report.status) as ReportStatus}</div>
-                  <Link to={`/report/${report.id}`} style={{ color: 'var(--primary)', fontSize: '13px' }}>Open</Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </main>
-  );
+  if (loading) return <main className="officer-dashboard"><p className="officer-dashboard__state">Loading assigned work…</p></main>;
+  return <main className="officer-dashboard">
+    <header className="officer-dashboard__header"><p className="eyebrow">OPERATIONS</p><h1>Officer Dashboard</h1><p>Welcome, {currentUser?.name || 'Officer'}. Manage your assigned road-safety work.</p></header>
+    {error && <div className="officer-dashboard__state officer-dashboard__state--error">{error}</div>}
+    <section className="officer-kpis" aria-label="Officer workload summary">{cards.map(({ label, value, Icon }) => <article key={label}><div><span>{label}</span><Icon size={16} /></div><strong>{value}</strong></article>)}</section>
+    <section className="officer-assignments">
+      <div className="officer-assignments__header"><div><h2>Recent assignments</h2><p>Prioritise active reports and record repair progress.</p></div><Link to="/officer/reports">View all assigned reports</Link></div>
+      {reports.length === 0 ? <p className="officer-dashboard__state">No reports are assigned to you yet.</p> : <div className="officer-assignment-list">{reports.map((report) => <article key={report.id}>
+        <div className="officer-assignment-list__image">{report.image_url ? <img src={getServerUrl(report.image_url)} alt="Reported pothole" /> : <FiMapPin />}</div>
+        <div className="officer-assignment-list__summary"><code>#{report.id.slice(0, 8)}</code><strong>{report.location}</strong><span>{report.date}</span></div>
+        <div className="officer-assignment-list__meta"><SeverityBadge severity={report.severity} /><StatusBadge status={report.status} /></div>
+        <Link to={`/officer/reports/${report.id}`}>View report</Link>
+      </article>)}</div>}
+    </section>
+  </main>;
 };

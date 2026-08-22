@@ -116,6 +116,9 @@
   color: var(--muted, #64748b);
 }
 
+.map-popup-link { display:inline-block; margin-top:8px; color:var(--primary); font-size:12px; font-weight:700; }
+.map-sidebar img.map-sidebar__image { width:100%; object-fit:cover; padding:0; }
+
 .map-overlay-banner {
   position: absolute;
   top: 55px;
@@ -147,5 +150,4 @@
   color: var(--muted, #64748b);
   border: 1px solid var(--border, #cbd5e1);
 }
-
 

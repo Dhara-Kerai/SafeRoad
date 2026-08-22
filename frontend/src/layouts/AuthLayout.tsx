@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { FiCheckCircle, FiMoon, FiSun } from 'react-icons/fi';
-import { useTheme } from '../context/ThemeContext';
+import { FiShield } from 'react-icons/fi';
+import { AuthBackground } from '../components/auth/AuthBackground';
 
 import '../components/auth/Auth.css';
 import './AuthLayout.css';
@@ -9,56 +9,28 @@ interface AuthLayoutProps {
   children: ReactNode;
 }
 
-const platformFeatures = [
-  'AI-powered pothole detection',
-  'Live road monitoring',
-  'Smart government dashboard',
-  'Citizen reporting',
-];
-
 export const AuthLayout = ({ children }: AuthLayoutProps) => {
-  const { theme, toggleTheme } = useTheme();
-
   return (
     <div className="auth-layout">
-      <button
-        type="button"
-        className="auth-theme-toggle"
-        aria-label="Toggle theme"
-        title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-        onClick={toggleTheme}
-      >
-        {theme === 'light' ? <FiMoon /> : <FiSun />}
-      </button>
+      {/* Full-Screen Dark Cinematic Road Background */}
+      <AuthBackground />
 
-      <section className="auth-layout__intro">
-        <div className="auth-layout__brand">
-          <span className="auth-layout__logo">S</span>
-          <div>
-            <strong>SafeRoad</strong>
-            <small>Making Every Road Safer.</small>
+      {/* Centered Single-Column Container */}
+      <div className="auth-layout__content">
+        {/* Minimal SafeRoads Header */}
+        <header className="auth-layout__branding">
+          <span className="auth-layout__logo">
+            <FiShield size={24} />
+          </span>
+          <div className="auth-layout__title-group">
+            <h1 className="auth-layout__brand-name">SafeRoads</h1>
+            <p className="auth-layout__tagline">Smarter roads. Safer journeys.</p>
           </div>
-        </div>
+        </header>
 
-        <div className="auth-layout__copy">
-          <p className="auth-layout__eyebrow">ROAD SAFETY, REIMAGINED</p>
-          <h2>Better decisions begin with safer roads.</h2>
-          <p>
-            A connected platform that helps citizens and authorities act on road risks faster.
-          </p>
-        </div>
-
-        <ul className="auth-layout__features">
-          {platformFeatures.map((feature) => (
-            <li key={feature}>
-              <FiCheckCircle />
-              {feature}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <div className="auth-layout__form-area">{children}</div>
+        {/* Centered Glass Authentication Card Wrapper */}
+        <main className="auth-layout__card-wrapper">{children}</main>
+      </div>
     </div>
   );
 };

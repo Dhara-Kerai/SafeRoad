@@ -1,4 +1,5 @@
 // Public exports for reusable authentication interface components.
+export { AuthBackground } from './AuthBackground';
 export { AuthButton } from './AuthButton';
 export { AuthCard } from './AuthCard';
 export { AuthCheckbox } from './AuthCheckbox';

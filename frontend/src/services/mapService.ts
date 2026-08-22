@@ -1,91 +1,77 @@
 import { getBackendMapReports, getServerUrl, type BackendMapReport } from './reportService';
 import type { MapReport, MapSeverity, MapStatus } from '../types/map';
 
-export const mapBackendMapReportToMapReport = (r: BackendMapReport): MapReport => {
-  const severity = mapSeverity(r.severity);
-  const status = mapStatus(r.status);
-  const dateStr = r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString();
-  const imageUrl = r.attachments?.[0]?.url || null;
-  const aiResult = r.aiResults?.[0];
-  const confidence = aiResult?.confidenceScore !== undefined ? Math.round(aiResult.confidenceScore * 100) : 0;
+export const mapBackendMapReportToMapReport = (report: BackendMapReport): MapReport => {
+  const date = report.createdAt;
+  const aiResult = report.aiResults?.[0];
 
   return {
-    id: r.id,
-    title: r.title || 'Pothole Report',
-    latitude: Number(r.latitude),
-    longitude: Number(r.longitude),
-    severity,
-    status,
-    reporter: r.user?.fullName || 'Citizen User',
-    address: r.address || r.city || 'India',
-    description: r.description || r.title || 'Road incident report',
-    createdAt: dateStr,
-    updatedAt: dateStr,
-    image: imageUrl ? getServerUrl(imageUrl) : 'No evidence image uploaded',
-    vehicleType: 'Car',
-    verificationStatus: r.status === 'REPORTED' ? 'Pending' : (aiResult?.potholeDetected ? 'AI Verified' : 'Officer Verified'),
-    city: r.city || 'Unknown',
+    id: report.id,
+    title: report.title,
+    latitude: Number(report.latitude),
+    longitude: Number(report.longitude),
+    severity: mapSeverity(report.severity),
+    status: mapStatus(report.status),
+    reporter: report.user?.fullName || '',
+    address: report.address || report.city || '',
+    description: report.description || '',
+    createdAt: report.createdAt,
+    updatedAt: date,
+    imageUrl: report.attachments?.[0]?.url ? getServerUrl(report.attachments[0].url) : null,
+    image: report.attachments?.[0]?.url ? getServerUrl(report.attachments[0].url) : '',
+    vehicleType: '',
+    verificationStatus: report.status === 'REPORTED' ? 'Pending' : (aiResult?.potholeDetected ? 'AI Verified' : 'Officer Verified'),
+    city: report.city || '',
     incidentType: 'Pothole',
-    priority: severity === 'Critical' ? 'Urgent' : severity === 'High' ? 'Priority' : 'Standard',
-    estimatedRepairCost: severity === 'Critical' ? '₹15,000' : severity === 'High' ? '₹10,000' : '₹5,000',
-    estimatedRepairTime: severity === 'Critical' ? '4–8 hours' : '1–2 days',
-    assignedOfficer: r.officer?.user?.fullName || 'Unassigned',
-    department: r.department?.name || 'Road Maintenance',
-    citizenReports: 1,
-    aiConfidence: confidence,
-    detectionMethod: aiResult ? 'AI Automated Scan' : 'Citizen mobile report',
-    imageTimestamp: dateStr,
-    actionHistory: [{ status: 'Reported', date: dateStr }],
+    priority: report.severity === 'CRITICAL' ? 'Urgent' : report.severity === 'HIGH' ? 'Priority' : 'Standard',
+    estimatedRepairCost: '',
+    estimatedRepairTime: '',
+    assignedOfficer: report.officer?.user?.fullName || null,
+    department: report.department?.name || null,
+    citizenReports: 0,
+    aiConfidence: aiResult?.confidenceScore !== undefined ? Math.round(aiResult.confidenceScore * 100) : 0,
+    detectionMethod: '',
+    imageTimestamp: date,
+    actionHistory: [],
   };
 };
 
 const mapSeverity = (severity?: string): MapSeverity => {
-  if (!severity) return 'Medium';
-  switch (severity.toUpperCase()) {
-    case 'LOW':
-      return 'Low';
+  switch (severity?.toUpperCase()) {
+    case 'LOW': return 'Low';
+    case 'HIGH': return 'High';
+    case 'CRITICAL': return 'Critical';
     case 'MEDIUM':
-      return 'Medium';
-    case 'HIGH':
-      return 'High';
-    case 'CRITICAL':
-      return 'Critical';
-    default:
-      return 'Medium';
+    default: return 'Medium';
   }
 };
 
 const mapStatus = (status?: string): MapStatus => {
-  if (!status) return 'New';
-  switch (status.toUpperCase()) {
+  switch (status?.toUpperCase()) {
+    case 'AI_VERIFIED': return 'AI Verified';
+    case 'NEEDS_REVIEW': return 'Needs Review';
+    case 'OFFICER_ASSIGNED': return 'Officer Assigned';
+    case 'IN_PROGRESS': return 'In Progress';
+    case 'FIXED': return 'Fixed';
+    case 'QUALITY_CHECK': return 'Quality Check';
+    case 'COMPLETED': return 'Completed';
+    case 'CLOSED': return 'Closed';
+    case 'REJECTED': return 'Rejected';
     case 'REPORTED':
-      return 'New';
-    case 'AI_VERIFIED':
-    case 'NEEDS_REVIEW':
-      return 'Verified';
-    case 'OFFICER_ASSIGNED':
-    case 'ASSIGNED':
-      return 'Assigned';
-    case 'IN_PROGRESS':
-      return 'In Progress';
-    case 'FIXED':
-    case 'RESOLVED':
-      return 'Resolved';
-    default:
-      return 'New';
+    default: return 'Reported';
   }
 };
 
-export const getMapReports = async (): Promise<MapReport[]> => {
-  const backendReports = await getBackendMapReports();
-  return backendReports.map(mapBackendMapReportToMapReport);
-};
+const hasValidCoordinates = (report: MapReport): boolean =>
+  Number.isFinite(report.latitude) && Number.isFinite(report.longitude)
+  && report.latitude >= -90 && report.latitude <= 90
+  && report.longitude >= -180 && report.longitude <= 180;
+
+export const getMapReports = async (): Promise<MapReport[]> =>
+  (await getBackendMapReports()).map(mapBackendMapReportToMapReport).filter(hasValidCoordinates);
 
 export const getLatestReports = (reports: MapReport[], limit = 6): MapReport[] =>
-  [...reports]
-    .sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt))
-    .slice(0, limit);
+  [...reports].sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt)).slice(0, limit);
 
 export const formatReportDate = (date: string): string =>
   new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(date));
-

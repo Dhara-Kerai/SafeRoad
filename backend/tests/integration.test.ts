@@ -207,6 +207,16 @@ describe('SafeRoad Report Lifecycle Integration Test Suite', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('OFFICER_ASSIGNED');
     expect(res.body.officerId || res.body.assigned_to).toBe(officerId);
+
+    const notificationsResponse = await request(app)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${citizenToken}`);
+    expect(notificationsResponse.status).toBe(200);
+    const assignmentNotifications = notificationsResponse.body.data.filter(
+      (notification: { reportId?: string }) => notification.reportId === reportId
+    );
+    expect(assignmentNotifications.filter((notification: { title: string }) => notification.title === 'Officer Assigned')).toHaveLength(1);
+    expect(assignmentNotifications.filter((notification: { title: string }) => notification.title === 'Report Status Updated')).toHaveLength(1);
   });
 
   it('6. Should allow posting and fetching report comments', async () => {

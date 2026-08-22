@@ -7,5 +7,7 @@ export {
   listComments,
   updateReportStatus,
   assignOfficerToReport,
-  verifyReport
+  verifyReport,
+  getOfficerWorkload,
+  updateOfficerReportStatus
 } from './reportService';

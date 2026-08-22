@@ -16,7 +16,7 @@ export const fetchNotifications = async (): Promise<{ notifications: Notificatio
     };
   } catch (error) {
     console.error('Failed to fetch notifications from backend:', error);
-    return { notifications: [], unreadCount: 0 };
+    throw error;
   }
 };
 

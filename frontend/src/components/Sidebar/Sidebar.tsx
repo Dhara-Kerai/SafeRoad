@@ -13,15 +13,16 @@ import {
   FiSettings,
   FiShield,
   FiTool,
-  FiUsers,
 } from 'react-icons/fi';
 
 import './Sidebar.css';
 
 const navigationItems = [
-  { label: 'Dashboard', icon: FiGrid, path: '/dashboard' },
+  { label: 'Dashboard', icon: FiGrid, path: '/dashboard', roles: ['citizen', 'admin'] },
+  { label: 'Officer Dashboard', icon: FiGrid, path: '/officer', roles: ['municipal_officer'] },
   { label: 'Live Map', icon: FiMap, path: '/live-map' },
-  { label: 'Pothole Reports', icon: FiClipboard, path: '/my-reports' },
+  { label: 'Pothole Reports', icon: FiClipboard, path: '/my-reports', roles: ['citizen', 'admin'] },
+  { label: 'Assigned Reports', icon: FiTool, path: '/officer/reports', roles: ['municipal_officer'] },
 
   {
     label: 'AI Detection',
@@ -30,19 +31,6 @@ const navigationItems = [
     roles: ['citizen', 'municipal_officer', 'admin'],
   },
 
-  {
-    label: 'Officer Dashboard',
-    icon: FiUsers,
-    path: '/officer-dashboard',
-    roles: ['municipal_officer', 'admin'],
-  },
-
-  {
-    label: 'Repair Requests',
-    icon: FiTool,
-    path: '/my-reports',
-    roles: ['municipal_officer', 'admin'],
-  },
 
   {
     label: 'Analytics',
@@ -90,6 +78,9 @@ export const Sidebar = () => {
     }
     if (path === '/my-reports') {
       return location.pathname === '/my-reports' || location.pathname.startsWith('/report/');
+    }
+    if (path === '/officer/reports') {
+      return location.pathname === '/officer/reports' || location.pathname.startsWith('/officer/reports/');
     }
     if (path === '/ai-detection') {
       return location.pathname === '/ai-detection';

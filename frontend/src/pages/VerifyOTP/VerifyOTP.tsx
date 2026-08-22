@@ -90,7 +90,7 @@ export const VerifyOTP = () => {
           {timeLeft > 0 ? (
             <>Code expires in <strong>{formatTime(timeLeft)}</strong>.</>
           ) : (
-            <span style={{ color: 'var(--danger)' }}>Code has expired.</span>
+            <span style={{ color: '#f87171' }}>Code has expired.</span>
           )}{' '}
           Didn't receive it?{' '}
           <button

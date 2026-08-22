@@ -58,6 +58,10 @@ export const getReports = async (
       where.userId = user.userId;
     } else if (officerRecord?.id) {
       where.officerId = officerRecord.id;
+    } else {
+      // An OFFICER account without its required Officer profile must never fall
+      // back to an unrestricted report query.
+      where.id = { in: [] };
     }
   } else if (filters.mine === 'true' || filters.mine === true) {
     where.userId = user.userId;
@@ -125,6 +129,35 @@ export const getReports = async (
   };
 };
 
+/** Returns only the work assigned to the authenticated officer. */
+export const getOfficerAssignments = async (
+  user: { userId: string; role: string },
+  filters: any
+) => {
+  if (user.role !== 'OFFICER') {
+    throw new AppError('Access forbidden: officer role required', 403);
+  }
+
+  return getReports(user, { ...filters, mine: 'false' });
+};
+
+export const getOfficerWorkload = async (user: { userId: string; role: string }) => {
+  const result = await getOfficerAssignments(user, { page: '1', limit: '1000' });
+  const reports = result.data;
+  const count = (status: string) => reports.filter((report) => report.status === status).length;
+
+  return {
+    totalAssignedReports: result.pagination.total,
+    pendingReports: count('OFFICER_ASSIGNED'),
+    inRepair: count('IN_PROGRESS'),
+    fixedReports: count('FIXED'),
+    qualityCheckReports: count('QUALITY_CHECK'),
+    completedReports: count('COMPLETED'),
+    closedReports: count('CLOSED'),
+    recentAssignments: reports.slice(0, 6),
+  };
+};
+
 export const getReportById = async (
   id: string,
   user: { userId: string; role: string }
@@ -187,8 +220,24 @@ export const updateReport = async (
     throw new AppError('Report not found', 404);
   }
 
+  let updateData: any = { ...input };
+
   if (user.role === 'USER' && report.userId !== user.userId) {
     throw new AppError('Access forbidden to update this report', 403);
+  }
+
+  if (user.role === 'ADMIN' && input.status && input.status !== report.status) {
+    const allowedTransitions: Record<string, string[]> = {
+      REPORTED: ['AI_VERIFIED', 'NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
+      AI_VERIFIED: ['NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
+      NEEDS_REVIEW: ['AI_VERIFIED', 'REJECTED', 'OFFICER_ASSIGNED'],
+      FIXED: ['QUALITY_CHECK'],
+      QUALITY_CHECK: ['COMPLETED'],
+      COMPLETED: ['CLOSED'],
+    };
+    if (!allowedTransitions[report.status]?.includes(input.status)) {
+      throw new AppError('Invalid administrative report status transition', 403);
+    }
   }
 
   if (user.role === 'OFFICER') {
@@ -200,10 +249,22 @@ export const updateReport = async (
     if (report.officerId !== officerRecord?.id) {
       throw new AppError('Access forbidden to update this report', 403);
     }
+
+    if (input.status) {
+      const allowedTransitions: Record<string, string[]> = {
+        OFFICER_ASSIGNED: ['IN_PROGRESS'],
+        IN_PROGRESS: ['FIXED'],
+      };
+      if (!allowedTransitions[report.status]?.includes(input.status)) {
+        throw new AppError('Officers can only move an assigned report to In Repair, then Fixed', 403);
+      }
+    }
+
+    const { officerId, departmentId, ...officerAllowedData } = input as any;
+    updateData = officerAllowedData;
   }
 
   // USER role cannot alter status, departmentId or officerId
-  let updateData: any = { ...input };
   if (user.role === 'USER') {
     const { status, departmentId, officerId, ...allowedData } = input as any;
     updateData = allowedData;
@@ -277,17 +338,7 @@ export const getComments = async (
   reportId: string,
   user: { userId: string; role: string }
 ) => {
-  const report = await prisma.report.findUnique({
-    where: { id: reportId },
-  });
-
-  if (!report) {
-    throw new AppError('Report not found', 404);
-  }
-
-  if (user.role === 'USER' && report.userId !== user.userId) {
-    throw new AppError('Access forbidden to this report', 403);
-  }
+  await getReportById(reportId, user);
 
   const comments = await prisma.comment.findMany({
     where: { reportId },
@@ -341,8 +392,17 @@ export const addComment = async (
   };
 };
 
-export const getMapReports = async () => {
+export const getMapReports = async (user: { userId: string; role: string }) => {
+  let where: Prisma.ReportWhereInput = {};
+  if (user.role === 'USER') {
+    // Citizens have the same map visibility as their report list: their own reports.
+    where = { userId: user.userId };
+  } else if (user.role === 'OFFICER') {
+    const officer = await prisma.officer.findUnique({ where: { userId: user.userId }, select: { id: true } });
+    where = officer ? { officerId: officer.id } : { id: { in: [] } };
+  }
   return prisma.report.findMany({
+    where,
     select: {
       id: true,
       title: true,
@@ -369,4 +429,3 @@ export const getMapReports = async () => {
     },
   });
 };
-

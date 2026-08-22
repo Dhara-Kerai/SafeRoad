@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import { InteractiveMap, MapControls, MapFilters, MapKpiCards, MapLegend, MapSidebar, MapToolbar, RecentMapReports } from '../../components/map';
 import { useAuth } from '../../context/AuthContext';
-import { getLatestReports, getMapReports, mapBackendMapReportToMapReport } from '../../services/mapService';
+import { getLatestReports, getMapReports } from '../../services/mapService';
+import { getLocation } from '../../services/reportService';
 import { matchesMapFilters, sortMapReports, uniqueMapValues } from '../../services/mapUtils';
 import { useTransientNotice } from '../../hooks/useTransientNotice';
 import type { MapFiltersState, MapReport, MapSort } from '../../types/map';
-import type { BackendMapReport } from '../../services/reportService';
 import './LiveMap.css';
 
 const defaultFilters: MapFiltersState = {
@@ -22,6 +23,8 @@ const defaultFilters: MapFiltersState = {
 };
 
 export const LiveMap = () => {
+  const [searchParams] = useSearchParams();
+  const reportIdParam = searchParams.get('reportId') || searchParams.get('report');
   const [reports, setReports] = useState<MapReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +33,7 @@ export const LiveMap = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [heatmap, setHeatmap] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [sort, setSort] = useState<MapSort>('Newest');
   const { currentUser } = useAuth();
   const { notice, showNotice } = useTransientNotice(3500);
@@ -53,22 +57,21 @@ export const LiveMap = () => {
       });
   }, []);
 
-  const handleRealtimeReport = useCallback((payload: { report?: BackendMapReport }) => {
-    if (!payload?.report) {
-      return;
-    }
-
-    const nextReport = mapBackendMapReportToMapReport(payload.report);
-    setReports((currentReports) => {
-      const reportExists = currentReports.some((report) => report.id === nextReport.id);
-      if (reportExists) {
-        return currentReports;
+  useEffect(() => {
+    if (reportIdParam && reports.length > 0) {
+      const found = reports.find((r) => r.id === reportIdParam || r.id.startsWith(reportIdParam));
+      if (found) {
+        setSelectedReport(found);
       }
+    }
+  }, [reportIdParam, reports]);
 
-      return [nextReport, ...currentReports];
-    });
+  const handleRealtimeReport = useCallback(() => {
+    // Socket payloads are only a refresh signal. The protected map endpoint is
+    // the single source of truth for role-scoped reports.
+    loadReports();
     showNotice('New report received on the live map.');
-  }, [showNotice]);
+  }, [loadReports, showNotice]);
 
   useEffect(() => {
     void loadReports();
@@ -77,20 +80,18 @@ export const LiveMap = () => {
   useEffect(() => {
     const socket = io(backendOrigin, {
       transports: ['websocket'],
+      withCredentials: true,
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      if (currentUser) {
-        socket.emit('join', {
-          userId: currentUser.id,
-          role: currentUser.role.toUpperCase(),
-        });
-      }
+      if (currentUser) socket.emit('join');
     });
 
-    socket.on('report-created', handleRealtimeReport);
+    if (currentUser?.role !== 'municipal_officer') {
+      socket.on('report-created', handleRealtimeReport);
+    }
     socket.on('error', (payload: { message?: string }) => {
       console.warn('[LiveMap Socket] Event error:', payload?.message || 'Unknown socket error');
     });
@@ -111,6 +112,16 @@ export const LiveMap = () => {
     window.setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0);
   };
 
+  const locateUser = async () => {
+    const location = await getLocation();
+    if (location.status === 'success' && location.latitude !== undefined && location.longitude !== undefined) {
+      setCurrentLocation([location.latitude, location.longitude]);
+      showNotice('Map centred on your current location.');
+      return;
+    }
+    showNotice(location.message || 'Current location is unavailable.');
+  };
+
   return (
     <main className="live-map-page">
       <MapToolbar
@@ -129,8 +140,8 @@ export const LiveMap = () => {
           filters={filters}
           reporters={uniqueMapValues(reports, 'reporter')}
           cities={uniqueMapValues(reports, 'city')}
-          vehicleTypes={uniqueMapValues(reports, 'vehicleType')}
           departments={uniqueMapValues(reports, 'department')}
+          statuses={uniqueMapValues(reports, 'status')}
           onChange={setFilters}
           onReset={() => setFilters(defaultFilters)}
         />
@@ -140,6 +151,7 @@ export const LiveMap = () => {
             selectedReport={selectedReport}
             zoom={zoom}
             heatmap={heatmap}
+            currentLocation={currentLocation}
             isLoading={isLoading}
             error={error}
             onSelect={selectReport}
@@ -149,6 +161,7 @@ export const LiveMap = () => {
             onZoomIn={() => setZoom((value) => Math.min(value + 1, 2))}
             onZoomOut={() => setZoom((value) => Math.max(value - 1, 0))}
             onReset={() => setZoom(1)}
+            onLocate={() => { void locateUser(); }}
             onToggleHeatmap={() => setHeatmap((value) => !value)}
           />
           <MapLegend />

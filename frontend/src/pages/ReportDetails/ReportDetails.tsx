@@ -1,7 +1,7 @@
 // Full citizen report view with backend integration and workflow status updates.
 import { useEffect, useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getReportById, updateReportStatus, assignOfficerToReport } from '../../services/reportManagementService';
+import { getReportById, updateReportStatus, updateOfficerReportStatus, assignOfficerToReport } from '../../services/reportManagementService';
 import { fetchOfficers } from '../../services/adminService';
 import { CommentSection } from '../../components/reportManagement/CommentSection';
 import { ReportTimeline } from '../../components/reportManagement/ReportTimeline';
@@ -29,7 +29,8 @@ export const ReportDetails = () => {
   const [assigning, setAssigning] = useState(false);
   const [assignNotice, setAssignNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const isOfficer = currentUser?.role === 'municipal_officer' || currentUser?.role === 'admin';
+  const isMunicipalOfficer = currentUser?.role === 'municipal_officer';
+  const isOfficer = isMunicipalOfficer || currentUser?.role === 'admin';
   const isAdmin = currentUser?.role === 'admin';
 
   const loadReport = useCallback(() => {
@@ -66,7 +67,11 @@ export const ReportDetails = () => {
     if (!report) return;
     setUpdating(true);
     try {
-      await updateReportStatus(report.id, nextStatus, statusRemarks);
+      if (isMunicipalOfficer) {
+        await updateOfficerReportStatus(report.id, nextStatus as 'IN_PROGRESS' | 'FIXED', statusRemarks);
+      } else {
+        await updateReportStatus(report.id, nextStatus, statusRemarks);
+      }
       setStatusRemarks('');
       const updated = await getReportById(report.id);
       setReport(updated);
@@ -123,10 +128,29 @@ export const ReportDetails = () => {
     { label: 'AI Verified', value: 'AI_VERIFIED' },
     { label: 'Officer Assigned', value: 'OFFICER_ASSIGNED' },
     { label: 'Under Repair', value: 'IN_PROGRESS' },
-    { label: 'Completed', value: 'FIXED' },
+    { label: 'Fixed', value: 'FIXED' },
+    { label: 'Quality Check', value: 'QUALITY_CHECK' },
+    { label: 'Completed', value: 'COMPLETED' },
+    { label: 'Closed', value: 'CLOSED' },
     { label: 'Needs Review', value: 'NEEDS_REVIEW' },
     { label: 'Rejected', value: 'REJECTED' },
   ];
+  const nextStatusesByRole: Record<string, string[]> = isMunicipalOfficer
+    ? {
+        OFFICER_ASSIGNED: ['IN_PROGRESS'],
+        IN_PROGRESS: ['FIXED'],
+      }
+    : {
+        REPORTED: ['AI_VERIFIED', 'NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
+        AI_VERIFIED: ['NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
+        NEEDS_REVIEW: ['AI_VERIFIED', 'REJECTED', 'OFFICER_ASSIGNED'],
+        FIXED: ['QUALITY_CHECK'],
+        QUALITY_CHECK: ['COMPLETED'],
+        COMPLETED: ['CLOSED'],
+      };
+  const availableStatusOptions = statusOptions.filter((option) =>
+    nextStatusesByRole[report.status]?.includes(option.value)
+  );
 
   return (
     <main className="report-details">
@@ -158,6 +182,10 @@ export const ReportDetails = () => {
               <div>
                 <dt>Road type</dt>
                 <dd>{report.roadType}</dd>
+              </div>
+              <div>
+                <dt>GPS coordinates</dt>
+                <dd>{report.latitude !== undefined && report.longitude !== undefined ? <a href={`https://www.openstreetmap.org/?mlat=${report.latitude}&mlon=${report.longitude}#map=18/${report.latitude}/${report.longitude}`} target="_blank" rel="noreferrer">{report.latitude.toFixed(6)}, {report.longitude.toFixed(6)} · View map</a> : 'Not available'}</dd>
               </div>
               <div>
                 <dt>Traffic level</dt>
@@ -193,7 +221,7 @@ export const ReportDetails = () => {
                       <span>{report.aiVerified ? 'Pothole detected' : 'No pothole detected'}</span>
                       {report.aiConfidence !== undefined && report.aiConfidence !== null && (
                         <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                          Confidence: {Math.round(report.aiConfidence * 100)}%
+                          Confidence: {report.aiConfidence > 1 ? Math.round(report.aiConfidence) : Math.round(report.aiConfidence * 100)}%
                         </span>
                       )}
                       {report.aiSeverity && (
@@ -300,7 +328,7 @@ export const ReportDetails = () => {
 
           {isOfficer && (
             <div className="detail-section" style={{ marginTop: '20px' }}>
-              <h3>Update status (Officer)</h3>
+              <h3>Update status ({isAdmin ? 'Admin' : 'Officer'})</h3>
               <div style={{ display: 'grid', gap: '10px', marginTop: '10px' }}>
                 <textarea 
                   value={statusRemarks} 
@@ -319,7 +347,7 @@ export const ReportDetails = () => {
                   style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
                 >
                   <option value="">Select next status...</option>
-                  {statusOptions.map(opt => (
+                  {availableStatusOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>

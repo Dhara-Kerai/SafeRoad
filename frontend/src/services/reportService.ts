@@ -68,18 +68,25 @@ export const mapBackendStatusToFrontend = (status: string): ReportStatus => {
       return 'AI Verified';
     case 'OFFICER_VERIFIED':
     case 'ACKNOWLEDGED':
-    case 'NEEDS_REVIEW':
       return 'Officer Verified';
+    case 'NEEDS_REVIEW':
+      return 'Needs Review';
     case 'ASSIGNED':
     case 'OFFICER_ASSIGNED':
       return 'Repair Assigned';
     case 'IN_PROGRESS':
-    case 'QUALITY_CHECK':
       return 'Under Repair';
-    case 'RESOLVED':
-    case 'CLOSED':
     case 'FIXED':
+      return 'Fixed';
+    case 'QUALITY_CHECK':
+      return 'Quality Check';
+    case 'RESOLVED':
+    case 'COMPLETED':
       return 'Completed';
+    case 'CLOSED':
+      return 'Closed';
+    case 'REJECTED':
+      return 'Rejected';
     default:
       return 'Reported';
   }
@@ -109,7 +116,11 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
   }
 
   const priority = (severity === 'Critical' || severity === 'High') ? 'Urgent' : 'Standard';
-  const aiResult = report.aiResults?.[0];
+  const aiResult = (Array.isArray(report.aiResults) && report.aiResults.length > 0)
+    ? report.aiResults[0]
+    : (Array.isArray(report.ai_results) && report.ai_results.length > 0)
+    ? report.ai_results[0]
+    : (report.aiResult && !Array.isArray(report.aiResult) ? report.aiResult : null);
   const aiVerified = Boolean(aiResult?.potholeDetected);
   const aiConfidence = aiResult ? aiResult.confidenceScore : undefined;
 
@@ -174,6 +185,8 @@ export const mapBackendReportToManagedReport = (report: any): ManagedReport => {
     assignedOfficerBadge,
     assignedOfficerDepartment,
     officerId,
+    latitude: report.latitude,
+    longitude: report.longitude,
   };
 };
 
@@ -218,8 +231,18 @@ const mapStatusToBackend = (status: string): string | undefined => {
       return 'OFFICER_ASSIGNED';
     case 'Under Repair':
       return 'IN_PROGRESS';
-    case 'Completed':
+    case 'Fixed':
       return 'FIXED';
+    case 'Quality Check':
+      return 'QUALITY_CHECK';
+    case 'Completed':
+      return 'COMPLETED';
+    case 'Closed':
+      return 'CLOSED';
+    case 'Needs Review':
+      return 'NEEDS_REVIEW';
+    case 'Rejected':
+      return 'REJECTED';
     default:
       return status.toUpperCase().replace(' ', '_');
   }
@@ -271,7 +294,24 @@ export const getReports = async (params: GetReportsParams = {}, mine = false) =>
 
 export const getMyReports = (params: GetReportsParams = {}) => getReports(params, true);
 
-export const getAssignedReports = (params: GetReportsParams = {}) => getReports(params);
+export const getAssignedReports = async (params: GetReportsParams = {}) => {
+  const query = new URLSearchParams();
+  if (params.page) query.append('page', String(params.page));
+  if (params.size) query.append('limit', String(params.size));
+  if (params.search) query.append('search', params.search);
+  if (params.status && params.status !== 'All') query.append('status', mapStatusToBackend(params.status) || '');
+  if (params.severity && params.severity !== 'All') query.append('severity', params.severity.toUpperCase());
+  const response = await requestJson<any>(`/reports/assigned?${query.toString()}`, { method: 'GET' });
+  const rawItems = response.items || response.data || [];
+  return { items: rawItems.map(mapBackendReportToManagedReport), total: response.total ?? response.pagination?.total ?? rawItems.length, page: response.pagination?.page ?? 1, size: response.pagination?.limit ?? rawItems.length };
+};
+
+export const getOfficerWorkload = () => requestJson<any>('/reports/officer/workload', { method: 'GET' });
+
+export const updateOfficerReportStatus = (reportId: string, status: 'IN_PROGRESS' | 'FIXED', remarks?: string) => requestJson<any>(`/reports/${reportId}/officer-status`, {
+  method: 'PATCH',
+  body: JSON.stringify({ status, remarks }),
+});
 
 export const getReportById = async (reportId: string): Promise<ManagedReport> => {
   const response = await requestJson<any>(`/reports/${reportId}`, {
@@ -331,14 +371,20 @@ export const submitReport = async (report: ReportRequest) => {
     report.location.state,
   ].filter(Boolean);
 
+  const latitude = Number(report.location.latitude);
+  const longitude = Number(report.location.longitude);
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    throw new Error('A valid report location is required.');
+  }
+
   return requestJson<{ id: string }>('/reports', {
     method: 'POST',
     body: JSON.stringify({
       title: report.location.roadName || 'Pothole report',
       description: report.description,
       severity: (report.severity || 'Medium').toUpperCase(),
-      latitude: Number(report.location.latitude || 0),
-      longitude: Number(report.location.longitude || 0),
+      latitude,
+      longitude,
       address: addressParts.join(', '),
       city: report.location.city || 'Unknown',
       imageUrl: report.image,

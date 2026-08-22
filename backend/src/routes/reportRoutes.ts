@@ -2,6 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import {
   create,
   getAll,
+  getOfficerAssignments,
+  getOfficerWorkload,
+  updateOfficerStatus,
   getById,
   getMapReports,
   update,
@@ -26,6 +29,9 @@ router.get('/my', (req, res, next) => {
   getAll(req, res, next);
 });
 router.get('/map', getMapReports);
+router.get('/assigned', requireRole('OFFICER'), getOfficerAssignments);
+router.get('/officer/workload', requireRole('OFFICER'), getOfficerWorkload);
+router.patch('/:id/officer-status', requireRole('OFFICER'), updateOfficerStatus);
 router.get('/', getAll);
 router.get('/:id', getById);
 const requireManagementRoleForPrivilegedChanges = (

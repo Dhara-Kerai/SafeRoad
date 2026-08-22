@@ -1,5 +1,5 @@
 export type MapSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
-export type MapStatus = 'New' | 'Verified' | 'Assigned' | 'In Progress' | 'Resolved';
+export type MapStatus = 'Reported' | 'AI Verified' | 'Needs Review' | 'Officer Assigned' | 'In Progress' | 'Fixed' | 'Quality Check' | 'Completed' | 'Closed' | 'Rejected' | 'New' | 'Verified' | 'Assigned' | 'Resolved';
 export type VerificationStatus = 'Pending' | 'AI Verified' | 'Officer Verified';
 export type IncidentType = 'Pothole' | 'Road Crack' | 'Waterlogging' | 'Construction' | 'Accident' | 'Road Block';
 export type MapSort = 'Newest' | 'Oldest' | 'Highest Severity' | 'Most Reports' | 'Alphabetical';
@@ -16,6 +16,7 @@ export interface MapReport {
   description: string;
   createdAt: string;
   updatedAt: string;
+  imageUrl?: string | null;
   image: string;
   vehicleType: string;
   verificationStatus: VerificationStatus;
@@ -24,8 +25,8 @@ export interface MapReport {
   priority: 'Standard' | 'Priority' | 'Urgent';
   estimatedRepairCost: string;
   estimatedRepairTime: string;
-  assignedOfficer: string;
-  department: string;
+  assignedOfficer: string | null;
+  department: string | null;
   citizenReports: number;
   aiConfidence: number;
   detectionMethod: string;

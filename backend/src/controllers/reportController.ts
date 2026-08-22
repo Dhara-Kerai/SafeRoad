@@ -175,6 +175,72 @@ export const getAll = async (
   }
 };
 
+export const getOfficerAssignments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) return next(new AppError('Not authenticated', 401));
+    const result = await reportService.getOfficerAssignments(req.user, req.query);
+    const reports = result.data.map((report: any) => ({
+      ...report,
+      created_at: report.createdAt,
+      updated_at: report.updatedAt,
+      image_url: report.attachments?.[0]?.url || null,
+      assigned_to: report.officerId,
+    }));
+    res.status(200).json({ status: 'success', data: reports, pagination: result.pagination, items: reports, total: result.pagination.total });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOfficerWorkload = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) return next(new AppError('Not authenticated', 401));
+    const workload = await reportService.getOfficerWorkload(req.user);
+    res.status(200).json({ status: 'success', data: workload });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateOfficerStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) return next(new AppError('Not authenticated', 401));
+    const status = req.body.status;
+    if (status !== 'IN_PROGRESS' && status !== 'FIXED') {
+      return next(new AppError('Officers may update a report only to IN_PROGRESS or FIXED', 400));
+    }
+    const originalReport = await prisma.report.findUnique({ where: { id: req.params.id as string } });
+    if (!originalReport) return next(new AppError('Report not found', 404));
+    const report = await reportService.updateReport(req.params.id as string, { status }, req.user);
+    const remarks = typeof req.body.remarks === 'string' ? req.body.remarks.trim() : '';
+    if (remarks) await reportService.addComment(report.id, req.user, remarks);
+    socketService.emitReportUpdated(report);
+    socketService.emitStatusChanged(report.id, originalReport.status, report.status, report.userId, report.officerId || undefined);
+    await notificationService.createNotification({
+      userId: report.userId,
+      title: report.status === 'FIXED' ? 'Road Repair Marked Fixed' : 'Report Status Updated',
+      message: `Your report "${report.title}" is now ${report.status === 'FIXED' ? 'Fixed and awaiting quality check' : 'Under Repair'}.`,
+      type: NotificationType.REPORT,
+      reportId: report.id,
+    });
+    res.status(200).json({ status: 'success', data: { report } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getById = async (
   req: Request,
   res: Response,
@@ -270,16 +336,20 @@ export const update = async (
         report.officerId || undefined
       );
 
-      const notifType = newStatus === 'FIXED' ? NotificationType.SUCCESS : (newStatus === 'REJECTED' ? NotificationType.WARNING : NotificationType.REPORT);
-      const statusText = newStatus === 'FIXED' ? 'Resolved' : (newStatus === 'IN_PROGRESS' ? 'Under Repair' : (newStatus === 'OFFICER_ASSIGNED' ? 'Assigned' : newStatus));
+      // Assignment has a dedicated event below. Avoid creating both that
+      // notification and a generic status update for the same action.
+      if (!(newStatus === 'OFFICER_ASSIGNED' && newOfficerId && oldOfficerId !== newOfficerId)) {
+      const notifType = ['FIXED', 'COMPLETED', 'CLOSED'].includes(newStatus) ? NotificationType.SUCCESS : (newStatus === 'REJECTED' ? NotificationType.WARNING : NotificationType.REPORT);
+      const statusText: Record<string, string> = { FIXED: 'Fixed — awaiting quality check', QUALITY_CHECK: 'under quality check', COMPLETED: 'Completed', CLOSED: 'Closed', IN_PROGRESS: 'Under Repair', OFFICER_ASSIGNED: 'Assigned', AI_VERIFIED: 'AI Verified', NEEDS_REVIEW: 'Needs Review', REJECTED: 'Rejected' };
 
       await notificationService.createNotification({
         userId: report.userId,
-        title: newStatus === 'FIXED' ? 'Road Repair Completed' : 'Report Status Updated',
-        message: `Your report "${report.title}" is now ${statusText}.`,
+        title: newStatus === 'CLOSED' ? 'Report Closed' : newStatus === 'COMPLETED' ? 'Repair Quality Approved' : newStatus === 'FIXED' ? 'Road Repair Completed' : 'Report Status Updated',
+        message: `Your report "${report.title}" is now ${statusText[newStatus] || newStatus}.`,
         type: notifType,
         reportId: report.id,
       });
+      }
     }
 
     // 3. Emit report assigned event & persist DB notification
@@ -396,12 +466,13 @@ export const addComment = async (
 };
 
 export const getMapReports = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const reports = await reportService.getMapReports();
+    if (!req.user) return next(new AppError('Not authenticated', 401));
+    const reports = await reportService.getMapReports(req.user);
     res.status(200).json({
       status: 'success',
       data: reports,
@@ -410,4 +481,3 @@ export const getMapReports = async (
     next(error);
   }
 };
-

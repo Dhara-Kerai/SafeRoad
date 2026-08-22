@@ -39,7 +39,10 @@ export const AppRoutes = () => {
         <Route path="/verify-otp" element={withAuthLayout(<VerifyOTP />)} />
         <Route path="/reset-password" element={withAuthLayout(<ResetPassword />)} />
         <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
-        <Route path="/officer-dashboard" element={<ProtectedRoute allowedRoles={['municipal_officer', 'admin']}><MainLayout><OfficerDashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/officer-dashboard" element={<ProtectedRoute allowedRoles={['municipal_officer']}><MainLayout><OfficerDashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/officer" element={<ProtectedRoute allowedRoles={['municipal_officer']}><MainLayout><OfficerDashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/officer/reports" element={<ProtectedRoute allowedRoles={['municipal_officer']}><MainLayout><MyReports /></MainLayout></ProtectedRoute>} />
+        <Route path="/officer/reports/:reportId" element={<ProtectedRoute allowedRoles={['municipal_officer']}><MainLayout><ReportDetails /></MainLayout></ProtectedRoute>} />
         <Route path="/live-map" element={withWorkspacePage(<LiveMap />)} />
         <Route path="/analytics" element={withWorkspacePage(<Analytics />)} />
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Admin /></MainLayout></ProtectedRoute>} />

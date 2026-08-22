@@ -4,8 +4,8 @@ let socketInstance: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socketInstance) {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    let backendOrigin = 'http://localhost:5000';
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+    let backendOrigin = 'http://localhost:8000';
     try {
       backendOrigin = new URL(apiUrl).origin;
     } catch {
@@ -26,20 +26,11 @@ export const getSocket = (): Socket => {
   return socketInstance;
 };
 
-export const joinUserRoom = (user: { id: string; role: string }) => {
+export const joinUserRoom = (_user: { id: string; role: string }) => {
   const socket = getSocket();
-  const roleLower = (user.role || '').toLowerCase();
-  let backendRole = 'USER';
-  if (roleLower === 'admin') backendRole = 'ADMIN';
-  else if (roleLower === 'officer' || roleLower === 'municipal_officer') backendRole = 'OFFICER';
-
-  const payload = {
-    userId: user.id,
-    role: backendRole,
-  };
 
   const doJoin = () => {
-    socket.emit('join', payload);
+    socket.emit('join');
   };
 
   if (socket.connected) {

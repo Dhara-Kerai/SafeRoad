@@ -16,7 +16,10 @@ export const getDashboardStats = async (user?: { userId: string; role: string })
         aiVerifiedReports: 0,
         reportsNeedsReview: 0,
         inRepair: 0,
+        fixedReports: 0,
+        qualityCheckReports: 0,
         completedReports: 0,
+        closedReports: 0,
       };
     }
 
@@ -26,7 +29,10 @@ export const getDashboardStats = async (user?: { userId: string; role: string })
       aiVerifiedReports,
       reportsNeedsReview,
       inRepair,
+      fixedReports,
+      qualityCheckReports,
       completedReports,
+      closedReports,
     ] = await Promise.all([
       prisma.report.count({ where: { officerId } }),
       prisma.report.count({ where: { officerId, status: 'REPORTED' } }),
@@ -34,6 +40,9 @@ export const getDashboardStats = async (user?: { userId: string; role: string })
       prisma.report.count({ where: { officerId, status: 'NEEDS_REVIEW' } }),
       prisma.report.count({ where: { officerId, status: { in: ['OFFICER_ASSIGNED', 'IN_PROGRESS'] } } }),
       prisma.report.count({ where: { officerId, status: 'FIXED' } }),
+      prisma.report.count({ where: { officerId, status: 'QUALITY_CHECK' } }),
+      prisma.report.count({ where: { officerId, status: 'COMPLETED' } }),
+      prisma.report.count({ where: { officerId, status: 'CLOSED' } }),
     ]);
 
     return {
@@ -42,7 +51,10 @@ export const getDashboardStats = async (user?: { userId: string; role: string })
       aiVerifiedReports,
       reportsNeedsReview,
       inRepair,
+      fixedReports,
+      qualityCheckReports,
       completedReports,
+      closedReports,
     };
   }
 
@@ -58,9 +70,9 @@ export const getDashboardStats = async (user?: { userId: string; role: string })
       aiVerifiedReports,
     ] = await Promise.all([
       prisma.report.count({ where: { userId: user.userId } }),
-      prisma.report.count({ where: { userId: user.userId, status: 'FIXED' } }),
-      prisma.report.count({ where: { userId: user.userId, status: { in: ['REPORTED', 'AI_VERIFIED'] } } }),
-      prisma.report.count({ where: { userId: user.userId, status: { in: ['OFFICER_ASSIGNED', 'IN_PROGRESS'] } } }),
+      prisma.report.count({ where: { userId: user.userId, status: 'CLOSED' } }),
+      prisma.report.count({ where: { userId: user.userId, status: { in: ['REPORTED', 'AI_VERIFIED', 'NEEDS_REVIEW'] } } }),
+      prisma.report.count({ where: { userId: user.userId, status: { in: ['OFFICER_ASSIGNED', 'IN_PROGRESS', 'FIXED', 'QUALITY_CHECK', 'COMPLETED'] } } }),
       prisma.report.count({ where: { userId: user.userId, severity: { in: ['HIGH', 'CRITICAL'] } } }),
       prisma.report.count({ where: { userId: user.userId, severity: 'MEDIUM' } }),
       prisma.report.count({ where: { userId: user.userId, severity: 'LOW' } }),
@@ -94,20 +106,20 @@ export const getDashboardStats = async (user?: { userId: string; role: string })
     // Total Reports
     prisma.report.count(),
 
-    // Resolved Reports (FIXED)
-    prisma.report.count({ where: { status: 'FIXED' } }),
+    // Resolved reports are final only after administrative closure.
+    prisma.report.count({ where: { status: 'CLOSED' } }),
 
     // Pending Reports (REPORTED & AI_VERIFIED)
     prisma.report.count({
       where: {
-        status: { in: ['REPORTED', 'AI_VERIFIED'] },
+        status: { in: ['REPORTED', 'AI_VERIFIED', 'NEEDS_REVIEW'] },
       },
     }),
 
-    // In Progress Reports (OFFICER_ASSIGNED & IN_PROGRESS)
+    // Work remains active through quality check and completion review.
     prisma.report.count({
       where: {
-        status: { in: ['OFFICER_ASSIGNED', 'IN_PROGRESS'] },
+        status: { in: ['OFFICER_ASSIGNED', 'IN_PROGRESS', 'FIXED', 'QUALITY_CHECK', 'COMPLETED'] },
       },
     }),
 
@@ -190,19 +202,26 @@ export const getReportsByCity = async () => {
   }));
 };
 
-export const getMonthlyTrends = async () => {
+export const getMonthlyTrends = async (user?: { userId: string; role: string }) => {
   const twelveMonthsAgo = new Date();
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
   twelveMonthsAgo.setDate(1);
   twelveMonthsAgo.setHours(0, 0, 0, 0);
 
   // Fetch report creation dates in the range
-  const reports = await prisma.report.findMany({
-    where: {
-      createdAt: {
-        gte: twelveMonthsAgo,
-      },
+  let where: any = {
+    createdAt: {
+      gte: twelveMonthsAgo,
     },
+  };
+  if (user?.role === 'OFFICER') {
+    const officer = await prisma.officer.findUnique({ where: { userId: user.userId }, select: { id: true } });
+    where = officer ? { ...where, officerId: officer.id } : { ...where, id: { in: [] } };
+  } else if (user?.role === 'USER') {
+    where = { ...where, userId: user.userId };
+  }
+  const reports = await prisma.report.findMany({
+    where,
     select: {
       createdAt: true,
     },
@@ -260,7 +279,7 @@ export const getDepartmentPerformance = async () => {
 
   return departments.map((d) => {
     const assigned = d._count.reports;
-    const completed = d.reports.filter((r) => r.status === 'FIXED').length;
+    const completed = d.reports.filter((r) => r.status === 'CLOSED').length;
     const completionRate =
       assigned > 0
         ? parseFloat(((completed / assigned) * 100).toFixed(1))
@@ -298,7 +317,7 @@ export const getOfficerPerformance = async () => {
 
   return officers.map((o) => {
     const assigned = o._count.reports;
-    const completed = o.reports.filter((r) => r.status === 'FIXED').length;
+    const completed = o.reports.filter((r) => r.status === 'CLOSED').length;
     const completionRate =
       assigned > 0
         ? parseFloat(((completed / assigned) * 100).toFixed(1))

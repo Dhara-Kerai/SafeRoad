@@ -110,7 +110,10 @@ export const mapBackendToAnalyticsReport = (report: any): AnalyticsReport => {
     NEEDS_REVIEW: 'Verified',
     OFFICER_ASSIGNED: 'Assigned',
     IN_PROGRESS: 'In Progress',
-    FIXED: 'Resolved',
+    FIXED: 'In Progress',
+    QUALITY_CHECK: 'In Progress',
+    COMPLETED: 'Resolved',
+    CLOSED: 'Resolved',
     REJECTED: 'Resolved',
   };
 
@@ -227,4 +230,3 @@ export const highestSeverityFirst = (reports: AnalyticsReport[]) =>
       (severityOrder[second.severity] ?? 0) - (severityOrder[first.severity] ?? 0) ||
       Date.parse(second.createdAt) - Date.parse(first.createdAt)
   );
-

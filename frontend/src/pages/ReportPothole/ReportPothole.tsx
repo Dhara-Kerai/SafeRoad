@@ -55,6 +55,14 @@ export const ReportPothole = () => {
         setValidationMessage('Please fill in the Area before continuing.');
         return;
       }
+      const latStr = String(report.location.latitude ?? '').trim();
+      const lngStr = String(report.location.longitude ?? '').trim();
+      const latitude = Number(latStr);
+      const longitude = Number(lngStr);
+      if (!latStr || !lngStr || !Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+        setValidationMessage('Please detect your location or enter valid latitude and longitude coordinates before continuing.');
+        return;
+      }
       setValidationMessage('');
     }
     if (currentStep === 3 && (!report.description || !report.roadType || !report.severity || !report.traffic)) return;

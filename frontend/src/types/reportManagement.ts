@@ -1,6 +1,6 @@
 // Types for static citizen report-management presentation data.
 import type { AIResult, Severity } from './Report';
-export type ReportStatus = 'Reported' | 'AI Verified' | 'Officer Verified' | 'Repair Assigned' | 'Under Repair' | 'Completed';
+export type ReportStatus = 'Reported' | 'AI Verified' | 'Officer Verified' | 'Repair Assigned' | 'Under Repair' | 'Fixed' | 'Quality Check' | 'Completed' | 'Closed' | 'Needs Review' | 'Rejected';
 export interface ManagedReport {
   id: string;
   date: string;
@@ -25,6 +25,7 @@ export interface ManagedReport {
   assignedOfficerBadge?: string | null;
   assignedOfficerDepartment?: string | null;
   officerId?: string | null;
+  latitude?: number;
+  longitude?: number;
 }
 export interface ReportComment { author: string; role: string; message: string; timestamp: string; initials: string; }
-
