@@ -11,6 +11,8 @@ import {
   remove,
   getComments,
   addComment,
+  search,
+  getAttachment,
 } from '../controllers/reportController';
 import { protect } from '../middleware/authMiddleware';
 import { uploadImage } from '../controllers/uploadController';
@@ -28,11 +30,13 @@ router.get('/my', (req, res, next) => {
   req.query.mine = 'true';
   getAll(req, res, next);
 });
+router.get('/search', search);
 router.get('/map', getMapReports);
 router.get('/assigned', requireRole('OFFICER'), getOfficerAssignments);
 router.get('/officer/workload', requireRole('OFFICER'), getOfficerWorkload);
 router.patch('/:id/officer-status', requireRole('OFFICER'), updateOfficerStatus);
 router.get('/', getAll);
+router.get('/:id/attachments/:attachmentId', getAttachment);
 router.get('/:id', getById);
 const requireManagementRoleForPrivilegedChanges = (
   req: Request,

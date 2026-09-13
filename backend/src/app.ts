@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { errorHandler, AppError } from './middleware/errorHandler';
+import { csrfProtection } from './middleware/csrfProtection';
 
 import authRoutes from './routes/authRoutes';
 import reportRoutes from './routes/reportRoutes';
@@ -37,8 +38,8 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+app.use(csrfProtection);
 app.use(morgan('dev'));
-
 
 // Static Files Serving
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

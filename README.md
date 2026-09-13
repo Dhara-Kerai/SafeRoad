@@ -34,6 +34,7 @@ graph TD
 3. **AI Service (`ai-service/`)**:
    * Built with **FastAPI**, **Uvicorn**, **PyTorch**, **OpenCV**, and **Ultralytics YOLOv8**.
    * Performs computer vision inference on uploaded road images, detects pothole bounding boxes, calculates severity ratings based on relative surface area, draws annotated bounding boxes, and returns structured detection payloads.
+   * For the full system specification, see [AI Architecture Documentation](docs/AI_ARCHITECTURE.md).
 
 4. **Database (`postgres`)**:
    * **PostgreSQL 16** database managed via Prisma schema migrations.
@@ -161,3 +162,4 @@ SafeRoad uses **GitHub Actions** (`.github/workflows/ci.yml`) to automatically v
 ## 📄 License
 
 This project is open-source and licensed under the **[MIT License](LICENSE)**.
+

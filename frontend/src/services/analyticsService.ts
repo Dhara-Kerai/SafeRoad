@@ -59,37 +59,58 @@ export interface OfficerPerformanceItem {
   completionRate: number;
 }
 
+const unwrapResponseData = <T>(payload: T | { data: T } | { status: string; data: T }): T => {
+  if (payload && typeof payload === 'object' && 'data' in payload && payload.data !== undefined) {
+    return payload.data as T;
+  }
+  return payload as T;
+};
+
 export const fetchDashboardStats = async (): Promise<DashboardStats> => {
-  const response = await authenticatedRequestJson<{ status: string; data: DashboardStats }>('/analytics/dashboard');
-  return response.data;
+  const response = await authenticatedRequestJson<{ status: string; data: DashboardStats } | DashboardStats>('/analytics/dashboard');
+  return unwrapResponseData<DashboardStats>(response ?? {} as DashboardStats);
 };
 
 export const fetchRecentReports = async (): Promise<RecentReportItem[]> => {
-  return authenticatedRequestJson<RecentReportItem[]>('/analytics/recent');
+  const response = await authenticatedRequestJson<RecentReportItem[] | { status: string; data: RecentReportItem[] }>('/analytics/recent');
+  const data = unwrapResponseData<RecentReportItem[]>(response ?? []);
+  return Array.isArray(data) ? data : [];
 };
 
 export const fetchStatusDistribution = async (): Promise<StatusDistributionItem[]> => {
-  return authenticatedRequestJson<StatusDistributionItem[]>('/analytics/status-distribution');
+  const response = await authenticatedRequestJson<StatusDistributionItem[] | { status: string; data: StatusDistributionItem[] }>('/analytics/status-distribution');
+  const data = unwrapResponseData<StatusDistributionItem[]>(response ?? []);
+  return Array.isArray(data) ? data : [];
 };
 
 export const fetchSeverityDistribution = async (): Promise<SeverityDistributionItem[]> => {
-  return authenticatedRequestJson<SeverityDistributionItem[]>('/analytics/severity-distribution');
+  const response = await authenticatedRequestJson<SeverityDistributionItem[] | { status: string; data: SeverityDistributionItem[] }>('/analytics/severity-distribution');
+  const data = unwrapResponseData<SeverityDistributionItem[]>(response ?? []);
+  return Array.isArray(data) ? data : [];
 };
 
 export const fetchReportsByCity = async (): Promise<CityDistributionItem[]> => {
-  return authenticatedRequestJson<CityDistributionItem[]>('/analytics/reports-by-city');
+  const response = await authenticatedRequestJson<CityDistributionItem[] | { status: string; data: CityDistributionItem[] }>('/analytics/reports-by-city');
+  const data = unwrapResponseData<CityDistributionItem[]>(response ?? []);
+  return Array.isArray(data) ? data : [];
 };
 
 export const fetchMonthlyTrends = async (): Promise<MonthlyTrendItem[]> => {
-  return authenticatedRequestJson<MonthlyTrendItem[]>('/analytics/monthly-trends');
+  const response = await authenticatedRequestJson<MonthlyTrendItem[] | { status: string; data: MonthlyTrendItem[] }>('/analytics/monthly-trends');
+  const data = unwrapResponseData<MonthlyTrendItem[]>(response ?? []);
+  return Array.isArray(data) ? data : [];
 };
 
 export const fetchDepartmentPerformance = async (): Promise<DepartmentPerformanceItem[]> => {
-  return authenticatedRequestJson<DepartmentPerformanceItem[]>('/analytics/department-performance');
+  const response = await authenticatedRequestJson<DepartmentPerformanceItem[] | { status: string; data: DepartmentPerformanceItem[] }>('/analytics/department-performance');
+  const data = unwrapResponseData<DepartmentPerformanceItem[]>(response ?? []);
+  return Array.isArray(data) ? data : [];
 };
 
 export const fetchOfficerPerformance = async (): Promise<OfficerPerformanceItem[]> => {
-  return authenticatedRequestJson<OfficerPerformanceItem[]>('/analytics/officer-performance');
+  const response = await authenticatedRequestJson<OfficerPerformanceItem[] | { status: string; data: OfficerPerformanceItem[] }>('/analytics/officer-performance');
+  const data = unwrapResponseData<OfficerPerformanceItem[]>(response ?? []);
+  return Array.isArray(data) ? data : [];
 };
 
 export const mapBackendToAnalyticsReport = (report: any): AnalyticsReport => {

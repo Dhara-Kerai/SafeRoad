@@ -21,6 +21,7 @@ import { VerifyOTP } from '../pages/VerifyOTP';
 import { ProtectedRoute } from './ProtectedRoute';
 import { ReportProvider } from '../context/ReportContext';
 import { OfficerDashboard } from '../pages/OfficerDashboard';
+import { Settings } from '../pages/Settings';
 
 const withAuthLayout = (page: React.ReactNode) => <AuthLayout>{page}</AuthLayout>;
 const LiveMap = lazy(() => import('../pages/LiveMap').then(({ LiveMap: Page }) => ({ default: Page })));
@@ -54,6 +55,7 @@ export const AppRoutes = () => {
         <Route path="/report/:reportId" element={<ProtectedRoute><MainLayout><ReportDetails /></MainLayout></ProtectedRoute>} />
         <Route path="/reports/:reportId" element={<ProtectedRoute><MainLayout><ReportDetails /></MainLayout></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

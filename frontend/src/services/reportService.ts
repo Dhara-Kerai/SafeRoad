@@ -210,6 +210,7 @@ export const mapBackendCommentToReportComment = (comment: any): ReportComment =>
   const initials = authorName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
   return {
+    id: comment.id,
     author: authorName,
     role: roleName,
     message: comment.comment || comment.content || '',
@@ -293,6 +294,41 @@ export const getReports = async (params: GetReportsParams = {}, mine = false) =>
 };
 
 export const getMyReports = (params: GetReportsParams = {}) => getReports(params, true);
+
+export const searchReports = async (query: string, limit = 5) => {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return [] as Array<{
+      id: string;
+      title: string;
+      description?: string | null;
+      status?: string | null;
+      severity?: string | null;
+      address?: string | null;
+      city?: string | null;
+      reporter_name?: string | null;
+      assigned_officer_name?: string | null;
+      image_url?: string | null;
+    }>;
+  }
+
+  const response = await requestJson<any>(`/reports/search?q=${encodeURIComponent(trimmedQuery)}&limit=${limit}`, {
+    method: 'GET',
+  });
+
+  return (response?.data ?? response ?? []) as Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    status?: string | null;
+    severity?: string | null;
+    address?: string | null;
+    city?: string | null;
+    reporter_name?: string | null;
+    assigned_officer_name?: string | null;
+    image_url?: string | null;
+  }>;
+};
 
 export const getAssignedReports = async (params: GetReportsParams = {}) => {
   const query = new URLSearchParams();

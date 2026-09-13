@@ -22,19 +22,32 @@ import { mapBackendSeverityToFrontend, mapBackendStatusToFrontend } from './repo
 
 export const fetchOfficers = async () => {
   const response = await authenticatedRequestJson<{
-    status: string;
-    data: {
-      officers: Array<{
+    status?: string;
+    data?: {
+      officers?: Array<{
         id: string;
         badgeNumber: string;
         status: string;
         user: { id: string; fullName: string; email: string; role: string };
-        department: { id: string; name: string };
+        department?: { id?: string; name?: string } | null;
       }>;
     };
+    officers?: Array<{
+      id: string;
+      badgeNumber: string;
+      status: string;
+      user: { id: string; fullName: string; email: string; role: string };
+      department?: { id?: string; name?: string } | null;
+    }>;
   }>('/users/officers');
 
-  return response.data.officers.map((officer) => ({
+  const officers = Array.isArray(response?.data?.officers)
+    ? response.data.officers
+    : Array.isArray(response?.officers)
+      ? response.officers
+      : [];
+
+  return officers.map((officer) => ({
     id: officer.id,
     userId: officer.user.id,
     name: officer.user.fullName,
@@ -50,13 +63,17 @@ export const fetchOfficers = async () => {
 
 export const fetchAdminOverview = async () => {
   const [usersResponse, officersResponse, reportsResponse] = await Promise.all([
-    authenticatedRequestJson<{ status: string; data: { users: Array<{ id: string; fullName: string; email: string; role: string; createdAt: string; officer?: { status?: string; department?: { name?: string } | null } }> } }>('/users'),
-    authenticatedRequestJson<{ status: string; data: { officers: Array<{ id: string; badgeNumber: string; status: string; user: { id: string; fullName: string; email: string; role: string }; department: { name: string } }> } }>('/users/officers'),
-    authenticatedRequestJson<{ status: string; data: Array<{ id: string; title: string; city: string; status: string; severity: string; createdAt: string; department?: { name?: string } | null; officer?: { id: string; user?: { fullName: string } } | null; officerId?: string | null; aiResults?: Array<{ potholeDetected: boolean }> }> }>('/reports?limit=100'),
+    authenticatedRequestJson<{ status?: string; data?: { users?: Array<{ id: string; fullName: string; email: string; role: string; createdAt: string; officer?: { status?: string; department?: { name?: string } | null } }> }; users?: Array<{ id: string; fullName: string; email: string; role: string; createdAt: string; officer?: { status?: string; department?: { name?: string } | null } }> }>('/users'),
+    authenticatedRequestJson<{ status?: string; data?: { officers?: Array<{ id: string; badgeNumber: string; status: string; user: { id: string; fullName: string; email: string; role: string }; department?: { name?: string } | null }> }; officers?: Array<{ id: string; badgeNumber: string; status: string; user: { id: string; fullName: string; email: string; role: string }; department?: { name?: string } | null }> }>('/users/officers'),
+    authenticatedRequestJson<{ status?: string; data?: Array<{ id: string; title: string; city: string; status: string; severity: string; createdAt: string; department?: { name?: string } | null; officer?: { id: string; user?: { fullName: string } } | null; officerId?: string | null; aiResults?: Array<{ potholeDetected: boolean }> }>; items?: Array<{ id: string; title: string; city: string; status: string; severity: string; createdAt: string; department?: { name?: string } | null; officer?: { id: string; user?: { fullName: string } } | null; officerId?: string | null; aiResults?: Array<{ potholeDetected: boolean }> }> }>('/reports?limit=100'),
   ]);
 
+  const users = Array.isArray(usersResponse?.data?.users) ? usersResponse.data.users : Array.isArray(usersResponse?.users) ? usersResponse.users : [];
+  const officers = Array.isArray(officersResponse?.data?.officers) ? officersResponse.data.officers : Array.isArray(officersResponse?.officers) ? officersResponse.officers : [];
+  const reports = Array.isArray(reportsResponse?.data) ? reportsResponse.data : Array.isArray(reportsResponse?.items) ? reportsResponse.items : [];
+
   return {
-    users: usersResponse.data.users.map((user) => ({
+    users: users.map((user) => ({
       id: user.id,
       name: user.fullName,
       email: user.email,
@@ -65,7 +82,7 @@ export const fetchAdminOverview = async () => {
       createdAt: new Date(user.createdAt).toLocaleDateString(),
       department: user.officer?.department?.name ?? 'Unassigned',
     })),
-    officers: officersResponse.data.officers.map((officer) => ({
+    officers: officers.map((officer) => ({
       id: officer.id,
       userId: officer.user.id,
       name: officer.user.fullName,
@@ -77,7 +94,7 @@ export const fetchAdminOverview = async () => {
       status: officer.status || 'Available',
       availability: officer.status === 'Available' ? 'Available' : (officer.status || 'Available'),
     })),
-    reports: reportsResponse.data.map((report) => ({
+    reports: reports.map((report) => ({
       id: report.id,
       title: report.title,
       city: report.city,
@@ -89,7 +106,7 @@ export const fetchAdminOverview = async () => {
       officerId: report.officerId || report.officer?.id || null,
       verificationStatus: report.aiResults?.[0]?.potholeDetected ? 'AI Verified' : (report.status !== 'REPORTED' ? 'Verified' : 'Pending'),
     })),
-    departments: [{ name: 'Road Maintenance', officers: officersResponse.data.officers.length, pending: 0, resolved: 0, performance: 100 }],
+    departments: [{ name: 'Road Maintenance', officers: officers.length, pending: 0, resolved: 0, performance: 100 }],
     audits: [],
   };
 };

@@ -15,11 +15,18 @@ const safeEmit = (action: (io: any) => void) => {
 
 export const emitReportCreated = (report: any): void => {
   safeEmit((io) => {
+    // Admins retain full real-time report payload per global visibility scope
     io.to('admin').emit(SOCKET_EVENTS.REPORT_CREATED, { report });
+
+    // Department rooms receive ONLY a sanitized refresh signal to prevent data leakage
+    // Officers must retrieve report details via the authorized REST endpoint
     if (report.departmentId) {
       io.to(`department:${report.departmentId}`).emit(
         SOCKET_EVENTS.REPORT_CREATED,
-        { report }
+        {
+          type: 'REPORT_CREATED',
+          reportId: report.id,
+        }
       );
     }
   });

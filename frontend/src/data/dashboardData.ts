@@ -4,18 +4,8 @@ import {
   FiAlertCircle,
   FiBarChart2,
   FiClock,
-  FiMapPin,
-  FiPlus,
-  FiRadio,
   FiShield,
-  FiTool,
 } from 'react-icons/fi';
-
-export interface QuickAction {
-  label: string;
-  icon: IconType;
-  path?: string;
-}
 
 export interface DashboardMetric {
   label: string;
@@ -36,13 +26,6 @@ export interface TimelineEvent {
   title: string;
   description: string;
 }
-
-export const quickActions: QuickAction[] = [
-  { label: 'Report Pothole', icon: FiPlus, path: '/report-pothole' },
-  { label: 'Open Live Map', icon: FiMapPin, path: '/live-map' },
-  { label: 'Run AI Detection', icon: FiRadio, path: '/ai-detection' },
-  { label: 'Create Complaint', icon: FiTool, path: '/report-pothole' },
-];
 
 export const dashboardMetrics: DashboardMetric[] = [
   { label: 'Total Reports', value: '12,846', change: '+12.5%', icon: FiBarChart2, color: 'blue' },

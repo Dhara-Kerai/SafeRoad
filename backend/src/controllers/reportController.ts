@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Request, Response, NextFunction } from 'express';
 import {
   createReportSchema,
@@ -10,6 +12,28 @@ import { NotificationType } from '@prisma/client';
 import * as notificationService from '../services/notificationService';
 import * as socketService from '../services/socketService';
 import prisma from '../config/db';
+
+export const formatReportResponse = (report: any) => {
+  const attachments = Array.isArray(report.attachments)
+    ? report.attachments.map((att: any) => ({
+        ...att,
+        url: att.url || `/api/reports/${report.id}/attachments/${att.id}`,
+        download_url: `/api/reports/${report.id}/attachments/${att.id}`,
+      }))
+    : [];
+  const primaryAttachment = attachments[0];
+  const imageUrl = primaryAttachment ? primaryAttachment.url : (report.imageUrl || report.image_url || null);
+
+  return {
+    ...report,
+    created_at: report.createdAt,
+    updated_at: report.updatedAt,
+    attachments,
+    image_url: imageUrl,
+    reported_by: report.userId,
+    assigned_to: report.officerId,
+  };
+};
 
 export const create = async (
   req: Request,
@@ -108,14 +132,7 @@ export const create = async (
       });
     }
 
-    const formattedReport = {
-      ...report,
-      created_at: report.createdAt,
-      updated_at: report.updatedAt,
-      image_url: report.attachments?.[0]?.url || null,
-      reported_by: report.userId,
-      assigned_to: report.officerId,
-    };
+    const formattedReport = formatReportResponse(report);
 
     // Destructure status to prevent duplicate property error in TS when spreading
     const { status, ...reportRest } = formattedReport;
@@ -151,14 +168,7 @@ export const getAll = async (
 
     const result = await reportService.getReports(req.user, req.query);
 
-    const formattedReports = result.data.map((report: any) => ({
-      ...report,
-      created_at: report.createdAt,
-      updated_at: report.updatedAt,
-      image_url: report.attachments?.[0]?.url || null,
-      reported_by: report.userId,
-      assigned_to: report.officerId,
-    }));
+    const formattedReports = result.data.map((report: any) => formatReportResponse(report));
 
     res.status(200).json({
       status: 'success',
@@ -175,6 +185,38 @@ export const getAll = async (
   }
 };
 
+export const search = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      return next(new AppError('Not authenticated', 401));
+    }
+
+    const query = typeof req.query.q === 'string' ? req.query.q : '';
+    const limit = Number(req.query.limit ?? '8');
+    const results = await reportService.searchReports(req.user, query, limit);
+
+    res.status(200).json({
+      status: 'success',
+      data: results.map((report: any) => {
+        const formatted = formatReportResponse(report);
+        return {
+          ...report,
+          created_at: report.createdAt,
+          image_url: formatted.image_url,
+          reporter_name: report.user?.fullName || null,
+          assigned_officer_name: report.officer?.user?.fullName || null,
+        };
+      }),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getOfficerAssignments = async (
   req: Request,
   res: Response,
@@ -183,13 +225,7 @@ export const getOfficerAssignments = async (
   try {
     if (!req.user) return next(new AppError('Not authenticated', 401));
     const result = await reportService.getOfficerAssignments(req.user, req.query);
-    const reports = result.data.map((report: any) => ({
-      ...report,
-      created_at: report.createdAt,
-      updated_at: report.updatedAt,
-      image_url: report.attachments?.[0]?.url || null,
-      assigned_to: report.officerId,
-    }));
+    const reports = result.data.map((report: any) => formatReportResponse(report));
     res.status(200).json({ status: 'success', data: reports, pagination: result.pagination, items: reports, total: result.pagination.total });
   } catch (error) {
     next(error);
@@ -235,7 +271,7 @@ export const updateOfficerStatus = async (
       type: NotificationType.REPORT,
       reportId: report.id,
     });
-    res.status(200).json({ status: 'success', data: { report } });
+    res.status(200).json({ status: 'success', data: { report: formatReportResponse(report) } });
   } catch (error) {
     next(error);
   }
@@ -257,14 +293,7 @@ export const getById = async (
       return next(new AppError('Report not found', 404));
     }
 
-    const formattedReport = {
-      ...report,
-      created_at: report.createdAt,
-      updated_at: report.updatedAt,
-      image_url: report.attachments?.[0]?.url || null,
-      reported_by: report.userId,
-      assigned_to: report.officerId,
-    };
+    const formattedReport = formatReportResponse(report);
 
     const { status, ...reportRest } = formattedReport;
 
@@ -382,14 +411,7 @@ export const update = async (
       }
     }
 
-    const formattedReport = {
-      ...report,
-      created_at: report.createdAt,
-      updated_at: report.updatedAt,
-      image_url: report.attachments?.[0]?.url || null,
-      reported_by: report.userId,
-      assigned_to: report.officerId,
-    };
+    const formattedReport = formatReportResponse(report);
 
     const { status, ...reportRest } = formattedReport;
 
@@ -481,3 +503,45 @@ export const getMapReports = async (
     next(error);
   }
 };
+
+export const getAttachment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      return next(new AppError('Not authenticated', 401));
+    }
+
+    const id = req.params.id as string;
+    const attachmentId = req.params.attachmentId as string;
+
+    // Verify caller has permission to view this report via RBAC
+    await reportService.getReportById(id, req.user);
+
+    const attachment = await prisma.attachment.findFirst({
+      where: {
+        id: attachmentId,
+        reportId: id,
+      },
+    });
+
+    if (!attachment) {
+      return next(new AppError('Attachment not found', 404));
+    }
+
+    const safeRelativePath = attachment.url.replace(/^\/+/, '');
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    const safeFilePath = path.resolve(process.cwd(), safeRelativePath);
+
+    if (!safeFilePath.startsWith(uploadsDir) || !fs.existsSync(safeFilePath)) {
+      return next(new AppError('Attachment file not found', 404));
+    }
+
+    res.sendFile(safeFilePath);
+  } catch (error) {
+    next(error);
+  }
+};
+

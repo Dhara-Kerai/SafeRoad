@@ -63,49 +63,17 @@
   font-size: 13px;
   font-weight: 700;
   box-shadow: 0 5px 12px rgba(37,99,235,.22);
-}
-
-.quick-actions{
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  gap: 12px;
-  margin-bottom: 22px;
-}
-
-.quick-action{
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 700;
-  text-align: left;
   transition: var(--transition);
 }
 
-.quick-action:hover,.panel:hover{
+.primary-action:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.panel:hover{
   transform: translateY(-2px);
   box-shadow: var(--shadow);
-}
-
-.quick-action span{
-  display: grid;
-  place-items: center;
-  width: 29px;
-  height: 29px;
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-size: 15px;
-}
-
-.quick-action>svg:last-child{
-  margin-left: auto;
-  color: var(--muted);
 }
 
 .kpi-grid{
@@ -379,6 +347,13 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+
+.report-item:hover{
+  background: var(--surface-soft);
 }
 
 .report-dot{
@@ -533,11 +508,6 @@
   .kpi-grid{
     grid-template-columns: repeat(2,1fr);
   }
-
-  .quick-actions{
-    grid-template-columns: repeat(2,1fr);
-  }
-
 }
 
 @media(max-width:780px){
@@ -574,16 +544,14 @@
 }
 
 @media(max-width:500px){
-  .quick-actions,.kpi-grid{
-    grid-template-columns: 1fr 1fr;
+  .dashboard{
+    padding: 16px 10px;
+    overflow-x: hidden;
   }
 
-  .quick-action{
-    font-size: 11px;
-  }
-
-  .quick-action>svg:last-child{
-    display: none;
+  .kpi-grid{
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .kpi-card{

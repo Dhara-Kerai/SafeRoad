@@ -90,7 +90,7 @@ export const getMonthlyTrends = async (
         new AppError('Access forbidden: insufficient permissions', 403)
       );
     }
-    const data = await analyticsService.getMonthlyTrends(req.user);
+    const data = await analyticsService.getMonthlyTrends();
     res.status(200).json(data);
   } catch (error) {
     next(error);

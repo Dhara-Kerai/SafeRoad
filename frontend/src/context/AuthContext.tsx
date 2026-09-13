@@ -9,6 +9,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   signIn: (user: AuthUser) => void;
+  updateCurrentUser: (user: Partial<AuthUser>) => void;
   logout: () => void;
 }
 
@@ -34,6 +35,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = (user: AuthUser) => {
     setCurrentUser(user);
     setIsLoading(false);
+  };
+
+  const updateCurrentUser = (user: Partial<AuthUser>) => {
+    setCurrentUser((previousUser) => previousUser ? { ...previousUser, ...user } : previousUser);
   };
 
   useEffect(() => {
@@ -63,6 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: currentUser !== null,
     isLoading,
     signIn,
+    updateCurrentUser,
     logout,
   }), [currentUser, isLoading]);
 

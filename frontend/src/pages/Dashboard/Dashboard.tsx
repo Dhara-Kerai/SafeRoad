@@ -3,7 +3,6 @@ import {
   ActivityChart,
   KPISection,
   LiveMapCard,
-  QuickActions,
   RecentReports,
   Timeline,
   WelcomeSection,
@@ -82,7 +81,6 @@ export const Dashboard = () => {
   return (
     <main className="dashboard">
       <WelcomeSection />
-      <QuickActions />
       {error && (
         <div style={{ padding: '0.75rem 1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '0.5rem', marginBottom: '1rem' }} role="alert">
           {error}

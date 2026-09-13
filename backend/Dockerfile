@@ -18,4 +18,4 @@ EXPOSE 8000
 
 USER node
 
-CMD ["sh", "-c", "npx prisma db push && npm run start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]

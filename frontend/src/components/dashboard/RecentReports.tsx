@@ -80,7 +80,20 @@ export const RecentReports = ({ reports = [], isLoading }: RecentReportsProps) =
             const statusClass = statusClassName(report.status);
             const displayTitle = report.title || report.city || 'Report';
             return (
-              <article className="report-item" key={report.id}>
+              <article
+                className="report-item"
+                key={report.id}
+                onClick={() => navigate(`/report/${report.id}`)}
+                tabIndex={0}
+                role="button"
+                aria-label={`View report for ${displayTitle}`}
+                style={{ cursor: 'pointer' }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    navigate(`/report/${report.id}`);
+                  }
+                }}
+              >
                 <span className={`report-dot report-dot--${statusClass}`} />
                 <div>
                   <strong>{displayTitle}</strong>

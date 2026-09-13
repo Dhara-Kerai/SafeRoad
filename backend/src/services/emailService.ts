@@ -15,6 +15,12 @@ const getTransporter = () => {
     console.error('❌ [EmailService] SMTP credentials missing in process.env (SMTP_USER / SMTP_PASS).');
   }
 
+  // Strict TLS certificate verification in production; non-production may override for local testing
+  const rejectUnauthorized =
+    process.env.NODE_ENV === 'production'
+      ? true
+      : process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== 'false';
+
   return nodemailer.createTransport({
     host,
     port,
@@ -24,7 +30,7 @@ const getTransporter = () => {
       pass,
     },
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized,
     },
   });
 };

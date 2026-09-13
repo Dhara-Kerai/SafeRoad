@@ -28,4 +28,4 @@ export interface ManagedReport {
   latitude?: number;
   longitude?: number;
 }
-export interface ReportComment { author: string; role: string; message: string; timestamp: string; initials: string; }
+export interface ReportComment { id?: string; author: string; role: string; message: string; timestamp: string; initials: string; }

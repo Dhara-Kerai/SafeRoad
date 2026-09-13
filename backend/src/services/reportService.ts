@@ -200,7 +200,7 @@ export const getReportById = async (
     throw new AppError('Access forbidden to this report', 403);
   }
 
-  if (user.role === 'OFFICER' && report.officerId !== officerRecord?.id) {
+  if (user.role === 'OFFICER' && report.officerId !== officerRecord?.id && report.userId !== user.userId) {
     throw new AppError('Access forbidden to this report', 403);
   }
 
@@ -421,11 +421,97 @@ export const getMapReports = async (user: { userId: string; role: string }) => {
           user: { select: { fullName: true } },
         },
       },
-      attachments: { select: { url: true }, take: 1 },
+      attachments: { select: { id: true, url: true }, take: 1 },
       aiResults: { select: { confidenceScore: true, potholeDetected: true }, orderBy: { createdAt: 'desc' }, take: 1 },
     },
     orderBy: {
       createdAt: 'desc',
+    },
+  });
+};
+
+const buildVisibleReportSearchWhere = async (user: { userId: string; role: string }) => {
+  if (user.role === 'ADMIN') {
+    return {};
+  }
+
+  if (user.role === 'USER') {
+    return { userId: user.userId };
+  }
+
+  const officerRecord = await prisma.officer.findFirst({
+    where: { userId: user.userId },
+    select: { id: true },
+  });
+
+  if (!officerRecord?.id) {
+    return { id: { in: [] } };
+  }
+
+  return { officerId: officerRecord.id };
+};
+
+export const searchReports = async (
+  user: { userId: string; role: string },
+  query: string,
+  limit = 8
+) => {
+  const searchText = String(query ?? '').trim();
+  if (!searchText) {
+    return [];
+  }
+
+  const whereBase = await buildVisibleReportSearchWhere(user);
+
+  const searchTerm = searchText.replace(/\s+/g, ' ');
+  const statusMatches = new Set<string>();
+  const severityMatches = new Set<string>();
+  const normalized = searchTerm.toUpperCase();
+
+  const statusValues = [
+    'REPORTED', 'AI_VERIFIED', 'NEEDS_REVIEW', 'OFFICER_ASSIGNED', 'IN_PROGRESS',
+    'FIXED', 'QUALITY_CHECK', 'COMPLETED', 'CLOSED', 'REJECTED'
+  ];
+  const severityValues = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+  if (statusValues.includes(normalized)) {
+    statusMatches.add(normalized);
+  }
+  if (severityValues.includes(normalized)) {
+    severityMatches.add(normalized);
+  }
+
+  const searchWhere: Prisma.ReportWhereInput = {
+    ...whereBase,
+    OR: [
+      { id: { contains: searchTerm, mode: 'insensitive' } },
+      { title: { contains: searchTerm, mode: 'insensitive' } },
+      { description: { contains: searchTerm, mode: 'insensitive' } },
+      { address: { contains: searchTerm, mode: 'insensitive' } },
+      { city: { contains: searchTerm, mode: 'insensitive' } },
+      ...(statusMatches.size > 0 ? [{ status: { in: Array.from(statusMatches) as any } }] : []),
+      ...(severityMatches.size > 0 ? [{ severity: { in: Array.from(severityMatches) as any } }] : []),
+      { user: { fullName: { contains: searchTerm, mode: 'insensitive' } } },
+      { officer: { user: { fullName: { contains: searchTerm, mode: 'insensitive' } } } },
+    ],
+  };
+
+  return prisma.report.findMany({
+    where: searchWhere,
+    take: Math.max(1, Number(limit) || 8),
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      status: true,
+      severity: true,
+      address: true,
+      city: true,
+      createdAt: true,
+      user: { select: { id: true, fullName: true } },
+      officer: { select: { id: true, user: { select: { id: true, fullName: true } } } },
+      attachments: { select: { id: true, url: true }, take: 1 },
     },
   });
 };

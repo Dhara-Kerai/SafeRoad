@@ -5,6 +5,8 @@ import {
   forgotPasswordSchema,
   verifyOtpSchema,
   resetPasswordSchema,
+  updateProfileSchema,
+  changePasswordSchema,
 } from '../validations/authValidation';
 import * as authService from '../services/authService';
 import { AppError } from '../middleware/errorHandler';
@@ -137,6 +139,32 @@ export const getProfile = async (
       status: 'success',
       data: { user },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) return next(new AppError('Not authenticated', 401));
+    const parseResult = updateProfileSchema.safeParse(req.body);
+    if (!parseResult.success) return next(validationError(parseResult.error.issues));
+
+    const user = await authService.updateUserProfile(req.user.userId, parseResult.data);
+    res.status(200).json({ status: 'success', data: { user } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) return next(new AppError('Not authenticated', 401));
+    const parseResult = changePasswordSchema.safeParse(req.body);
+    if (!parseResult.success) return next(validationError(parseResult.error.issues));
+
+    await authService.changeUserPassword(req.user.userId, parseResult.data);
+    res.status(200).json({ status: 'success', message: 'Password changed successfully' });
   } catch (error) {
     next(error);
   }

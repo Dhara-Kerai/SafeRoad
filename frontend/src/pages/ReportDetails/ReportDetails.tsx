@@ -137,16 +137,24 @@ export const ReportDetails = () => {
   ];
   const nextStatusesByRole: Record<string, string[]> = isMunicipalOfficer
     ? {
-        OFFICER_ASSIGNED: ['IN_PROGRESS'],
-        IN_PROGRESS: ['FIXED'],
+        'Repair Assigned': ['IN_PROGRESS'],
+        'OFFICER_ASSIGNED': ['IN_PROGRESS'],
+        'Under Repair': ['FIXED'],
+        'IN_PROGRESS': ['FIXED'],
       }
     : {
-        REPORTED: ['AI_VERIFIED', 'NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
-        AI_VERIFIED: ['NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
-        NEEDS_REVIEW: ['AI_VERIFIED', 'REJECTED', 'OFFICER_ASSIGNED'],
-        FIXED: ['QUALITY_CHECK'],
-        QUALITY_CHECK: ['COMPLETED'],
-        COMPLETED: ['CLOSED'],
+        'Reported': ['AI_VERIFIED', 'NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
+        'REPORTED': ['AI_VERIFIED', 'NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
+        'AI Verified': ['NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
+        'AI_VERIFIED': ['NEEDS_REVIEW', 'REJECTED', 'OFFICER_ASSIGNED'],
+        'Needs Review': ['AI_VERIFIED', 'REJECTED', 'OFFICER_ASSIGNED'],
+        'NEEDS_REVIEW': ['AI_VERIFIED', 'REJECTED', 'OFFICER_ASSIGNED'],
+        'Fixed': ['QUALITY_CHECK'],
+        'FIXED': ['QUALITY_CHECK'],
+        'Quality Check': ['COMPLETED'],
+        'QUALITY_CHECK': ['COMPLETED'],
+        'Completed': ['CLOSED'],
+        'COMPLETED': ['CLOSED'],
       };
   const availableStatusOptions = statusOptions.filter((option) =>
     nextStatusesByRole[report.status]?.includes(option.value)
@@ -292,6 +300,8 @@ export const ReportDetails = () => {
 
               <div style={{ display: 'grid', gap: '10px' }}>
                 <select
+                  id="officer-assign-select"
+                  aria-label="Assign Officer"
                   value={selectedOfficerId}
                   onChange={(e) => setSelectedOfficerId(e.target.value)}
                   disabled={assigning}
@@ -307,6 +317,7 @@ export const ReportDetails = () => {
 
                 <button
                   type="button"
+                  id="save-officer-assign-btn"
                   onClick={handleAssignOfficer}
                   disabled={assigning || !selectedOfficerId}
                   style={{
@@ -331,12 +342,15 @@ export const ReportDetails = () => {
               <h3>Update status ({isAdmin ? 'Admin' : 'Officer'})</h3>
               <div style={{ display: 'grid', gap: '10px', marginTop: '10px' }}>
                 <textarea 
+                  id="status-remarks"
                   value={statusRemarks} 
                   onChange={(e) => setStatusRemarks(e.target.value)} 
                   placeholder="Add status change remarks..." 
                   style={{ width: '100%', minHeight: '60px', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface-soft)', color: 'var(--text)' }}
                 />
                 <select 
+                  id="status-update-select"
+                  aria-label="Select next status"
                   onChange={(e) => {
                     if (e.target.value) {
                       handleStatusUpdate(e.target.value);

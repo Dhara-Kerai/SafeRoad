@@ -17,8 +17,10 @@ export const refreshAccessToken = async (): Promise<boolean> => {
   return refreshInFlight;
 };
 
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/verify-otp', '/reset-password'];
+
 export const redirectToLogin = () => {
-  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+  if (typeof window !== 'undefined' && !PUBLIC_PATHS.includes(window.location.pathname)) {
     window.location.assign('/login');
   }
 };
@@ -118,7 +120,28 @@ export const getProfile = async () => {
         updatedAt: string;
       };
     };
-  }>('/auth/me', undefined, true);
+  }>('/auth/me', undefined, false);
+};
+
+export const updateProfile = async (fullName: string) => {
+  return requestJson<{
+    status: string;
+    data: { user: BackendAuthResponse['data']['user'] };
+  }>('/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify({ fullName }),
+  });
+};
+
+export const changePassword = async (input: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) => {
+  return requestJson<{ status: string; message: string }>('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 };
 
 export const logout = async (): Promise<void> => {

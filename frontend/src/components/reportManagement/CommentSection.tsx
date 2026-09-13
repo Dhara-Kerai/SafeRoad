@@ -49,8 +49,8 @@ export const CommentSection = ({ reportId }: { reportId: string }) => {
         <p style={{ color: 'var(--muted)', fontStyle: 'italic' }}>No comments yet. Be the first to start the discussion!</p>
       )}
 
-      {!loading && !error && comments.map((item) => (
-        <article className="comment" key={`${item.author}-${item.timestamp}`}>
+      {!loading && !error && comments.map((item, index) => (
+        <article className="comment" key={item.id || `${item.author}-${item.timestamp}-${index}`}>
           <span>{item.initials}</span>
           <div>
             <strong>

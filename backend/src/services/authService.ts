@@ -1,5 +1,5 @@
 import prisma from '../config/db';
-import { RegisterInput, LoginInput } from '../validations/authValidation';
+import { RegisterInput, LoginInput, UpdateProfileInput, ChangePasswordInput } from '../validations/authValidation';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { AppError } from '../middleware/errorHandler';
@@ -153,6 +153,41 @@ export const getUserProfile = async (userId: string) => {
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
+};
+
+const publicUser = (user: { id: string; fullName: string; email: string; role: 'USER' | 'OFFICER' | 'ADMIN'; createdAt: Date; updatedAt: Date }) => ({
+  id: user.id,
+  fullName: user.fullName,
+  email: user.email,
+  role: user.role,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+});
+
+export const updateUserProfile = async (userId: string, input: UpdateProfileInput) => {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { fullName: input.fullName },
+  });
+
+  return publicUser(user);
+};
+
+export const changeUserPassword = async (userId: string, input: ChangePasswordInput) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  const currentPasswordMatches = await comparePassword(input.currentPassword, user.password);
+  if (!currentPasswordMatches) {
+    throw new AppError('Current password is incorrect', 400);
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: await hashPassword(input.newPassword) },
+  });
 };
 
 export const createRefreshToken = async (userId: string): Promise<string> => {

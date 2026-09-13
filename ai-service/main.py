@@ -1,8 +1,17 @@
 import hmac
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if present
+env_path = Path(__file__).resolve().parent / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+else:
+    load_dotenv()
+
 from fastapi import FastAPI, File, UploadFile, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import uvicorn
 from app.api.detection import router as detection_router
 from app.core.model_loader import YOLOModelLoader
@@ -13,9 +22,6 @@ app = FastAPI(
     description="FastAPI AI service for automated road damage diagnostics",
     version="1.0.0"
 )
-
-# Mount static serving directory for annotated output image assets
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Configure CORS for React frontend and Node.js backend accessibility
 raw_origins = os.getenv("CORS_ORIGIN", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:8000")
@@ -39,13 +45,19 @@ async def root():
 @app.get("/health")
 async def health():
     model = YOLOModelLoader.get_model()
-    if model is None:
+    if model is None or not YOLOModelLoader.is_custom_model_loaded():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"status": "unhealthy", "reason": "YOLO model failed to load"}
+            detail={
+                "status": "unhealthy",
+                "model_loaded": False,
+                "model": YOLOModelLoader.get_model_name(),
+                "reason": YOLOModelLoader.get_load_error() or "Required custom pothole model (best.pt) failed to load"
+            }
         )
     return {
         "status": "healthy",
+        "model_loaded": True,
         "model": YOLOModelLoader.get_model_name()
     }
 
@@ -59,6 +71,13 @@ async def detect_potholes_legacy(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid internal API key",
+        )
+
+    model = YOLOModelLoader.get_model()
+    if model is None or not YOLOModelLoader.is_custom_model_loaded():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Custom pothole model (best.pt) is unavailable",
         )
 
     result = DetectionService.run_detection(image)

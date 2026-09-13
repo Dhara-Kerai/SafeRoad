@@ -45,7 +45,7 @@ export const WelcomeSection = () => {
         </p>
       </div>
 
-      <Link to="/report-pothole" className="primary-button">
+      <Link to="/report-pothole" className="primary-action">
         <FiPlus />
         Report Pothole
       </Link>

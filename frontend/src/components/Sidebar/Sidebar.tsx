@@ -114,7 +114,11 @@ export const Sidebar = () => {
         ))}
 
         <p className="sidebar__label sidebar__label--secondary">ACCOUNT</p>
-        <button type="button" className="sidebar__item">
+        <button
+          type="button"
+          className={`sidebar__item ${isItemActive('/settings') ? 'sidebar__item--active' : ''}`}
+          onClick={() => navigate('/settings')}
+        >
           <FiSettings />
           Settings
         </button>

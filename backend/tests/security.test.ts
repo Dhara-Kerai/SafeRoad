@@ -153,6 +153,71 @@ describe('Report security regressions', () => {
     expect((await request(app).patch(`/api/reports/${reportId}`).set('Authorization', `Bearer ${adminToken}`).send({ status: 'COMPLETED' })).status).toBe(403);
   });
 
+  it('searches only authorized reports using report metadata and RBAC-scoped access', async () => {
+    const ownerSearch = await request(app).get('/api/reports/search?q=security').set('Authorization', `Bearer ${ownerToken}`);
+    expect(ownerSearch.status).toBe(200);
+    expect(ownerSearch.body.data.some((report: { id: string }) => report.id === reportId)).toBe(true);
+    expect(ownerSearch.body.data.some((report: { id: string }) => report.id === otherReportId)).toBe(false);
+
+    const otherSearch = await request(app).get('/api/reports/search?q=security').set('Authorization', `Bearer ${otherToken}`);
+    expect(otherSearch.status).toBe(200);
+    expect(otherSearch.body.data.some((report: { id: string }) => report.id === reportId)).toBe(false);
+    expect(otherSearch.body.data.some((report: { id: string }) => report.id === otherReportId)).toBe(true);
+
+    const officerSearch = await request(app).get('/api/reports/search?q=security').set('Authorization', `Bearer ${officerToken}`);
+    expect(officerSearch.status).toBe(200);
+    expect(officerSearch.body.data.some((report: { id: string }) => report.id === reportId)).toBe(true);
+    expect(officerSearch.body.data.some((report: { id: string }) => report.id === otherReportId)).toBe(false);
+
+    const adminSearch = await request(app).get('/api/reports/search?q=security').set('Authorization', `Bearer ${adminToken}`);
+    expect(adminSearch.status).toBe(200);
+    expect(adminSearch.body.data.map((report: { id: string }) => report.id)).toEqual(expect.arrayContaining([reportId, otherReportId]));
+
+    const emptySearch = await request(app).get('/api/reports/search?q=').set('Authorization', `Bearer ${ownerToken}`);
+    expect(emptySearch.status).toBe(200);
+    expect(emptySearch.body.data).toEqual([]);
+  });
+
+  it('allows users to update only their profile name and change their password securely', async () => {
+    const profileResponse = await request(app)
+      .patch('/api/auth/profile')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ fullName: 'Updated Report Owner', role: 'ADMIN' });
+
+    expect(profileResponse.status).toBe(200);
+    expect(profileResponse.body.data.user.fullName).toBe('Updated Report Owner');
+    expect(profileResponse.body.data.user.role).toBe('USER');
+
+    const profile = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${ownerToken}`);
+    expect(profile.body.data.user.fullName).toBe('Updated Report Owner');
+    expect(profile.body.data.user.role).toBe('USER');
+
+    const wrongPassword = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ currentPassword: 'wrong-password', newPassword: 'NewPassword123', confirmPassword: 'NewPassword123' });
+    expect(wrongPassword.status).toBe(400);
+
+    const mismatch = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ currentPassword: 'Password123!', newPassword: 'NewPassword123', confirmPassword: 'DifferentPassword123' });
+    expect(mismatch.status).toBe(400);
+
+    const changed = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ currentPassword: 'Password123!', newPassword: 'NewPassword123', confirmPassword: 'NewPassword123' });
+    expect(changed.status).toBe(200);
+
+    const login = await request(app)
+      .post('/api/auth/login')
+      .send({ email: `owner_${suffix}@saferoad.test`, password: 'NewPassword123' });
+    expect(login.status).toBe(200);
+  });
+
   it('blocks other users and officers from deleting reports while allowing admin management', async () => {
     expect((await request(app).delete(`/api/reports/${reportId}`).set('Authorization', `Bearer ${otherToken}`)).status).toBe(403);
     expect((await request(app).delete(`/api/reports/${reportId}`).set('Authorization', `Bearer ${officerToken}`)).status).toBe(403);
@@ -188,5 +253,27 @@ describe('Report security regressions', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.message).toMatch(/magic bytes/i);
+  });
+
+  it('enforces RBAC access boundaries on report attachments', async () => {
+    const att = await prisma.attachment.create({
+      data: {
+        reportId: otherReportId,
+        url: '/uploads/reports/test.jpg',
+        fileType: 'IMAGE',
+      },
+    });
+
+    // Unauthenticated request is rejected (401)
+    expect((await request(app).get(`/api/reports/${otherReportId}/attachments/${att.id}`)).status).toBe(401);
+
+    // Non-owner citizen is forbidden (403)
+    expect((await request(app).get(`/api/reports/${otherReportId}/attachments/${att.id}`).set('Authorization', `Bearer ${ownerToken}`)).status).toBe(403);
+
+    // Report owner has permission (returns 404 because file test.jpg doesn't exist on disk, not 403)
+    const ownerRes = await request(app).get(`/api/reports/${otherReportId}/attachments/${att.id}`).set('Authorization', `Bearer ${otherToken}`);
+    expect(ownerRes.status).toBe(404);
+
+    await prisma.attachment.deleteMany({ where: { id: att.id } });
   });
 });

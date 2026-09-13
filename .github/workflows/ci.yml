@@ -59,6 +59,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/saferoad_test?schema=public
           JWT_SECRET: ci-test-secret-key-saferoad-2026
           AI_SERVICE_URL: http://localhost:8001
+          AI_INTERNAL_API_KEY: ci-test-internal-api-key-safe
         run: |
           cd backend
           npm test -- --passWithNoTests
@@ -117,4 +118,9 @@ jobs:
       - name: Validate Python Syntax & Imports
         run: |
           cd ai-service
-          python -m py_compile main.py app/main.py app/core/model_loader.py app/services/detection_service.py
+          python -m py_compile main.py app/api/detection.py app/core/model_loader.py app/schemas/detection.py app/services/detection_service.py tests/test_model_loader.py
+
+      - name: Run AI Unit Tests
+        run: |
+          cd ai-service
+          python tests/test_model_loader.py
