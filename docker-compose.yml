@@ -21,9 +21,12 @@ services:
       dockerfile: Dockerfile
     container_name: saferoad-ai-service
     restart: unless-stopped
+    group_add:
+      - "10001"
     environment:
       - PORT=8001
       - AI_INTERNAL_API_KEY=${AI_INTERNAL_API_KEY:?Set AI_INTERNAL_API_KEY in the root .env file}
+      - UPLOADS_DIR=/app/uploads
     volumes:
       - backend_uploads:/app/uploads
       - ai_models:/app/models
@@ -34,6 +37,8 @@ services:
       dockerfile: Dockerfile
     container_name: saferoad-backend
     restart: unless-stopped
+    group_add:
+      - "10001"
     ports:
       - "8000:8000"
     environment:

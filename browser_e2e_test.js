@@ -479,8 +479,14 @@ async function runBrowserTests() {
     logStep('phase4_officer', 'Officer logs in & lands on Officer Dashboard', page.url().includes('/officer-dashboard') || page.url().includes('/officer'), `URL: ${page.url()}`);
 
     // 4.3 Officer Dashboard KPIs & Workload
-    await page.waitForSelector('.officer-kpis article, .officer-dashboard', { timeout: 8000 });
-    const hasWorkloadKpis = (await page.content()).includes('Total assigned') || (await page.content()).includes('Pending') || (await page.content()).includes('In repair');
+    await page.waitForSelector('.officer-kpis article', { timeout: 8000 });
+    await page.waitForFunction(() => {
+      const cards = Array.from(document.querySelectorAll('.officer-kpis article'));
+      return cards.length === 4 && cards.some((card) => card.textContent?.includes('Total assigned'));
+    }, { timeout: 8000 });
+    const hasWorkloadKpis = await page.$$eval('.officer-kpis article', (cards) =>
+      cards.length === 4 && cards.some((card) => card.textContent?.includes('Total assigned'))
+    );
     logStep('phase4_officer', 'Officer Dashboard KPI cards rendered', hasWorkloadKpis);
 
     // 4.4 Officer Assigned Reports Queue

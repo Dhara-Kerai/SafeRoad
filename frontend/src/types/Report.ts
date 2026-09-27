@@ -16,4 +16,4 @@ export interface AIResult {
   createdAt?: string;
   updatedAt?: string;
 }
-export interface ReportRequest { image: string | null; location: Location; description: string; roadType: RoadType | ''; severity: Severity | ''; traffic: Traffic | ''; notes: string; aiResult?: AIResult; }
+export interface ReportRequest { image: string | null; imagePreview: string | null; location: Location; description: string; roadType: RoadType | ''; severity: Severity | ''; traffic: Traffic | ''; notes: string; aiResult?: AIResult; }

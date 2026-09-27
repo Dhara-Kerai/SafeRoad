@@ -29,9 +29,10 @@ export const ReportDetails = () => {
   const [assigning, setAssigning] = useState(false);
   const [assignNotice, setAssignNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const isMunicipalOfficer = currentUser?.role === 'municipal_officer';
-  const isOfficer = isMunicipalOfficer || currentUser?.role === 'admin';
-  const isAdmin = currentUser?.role === 'admin';
+  const roleLower = (currentUser?.role || '').toLowerCase();
+  const isMunicipalOfficer = roleLower === 'municipal_officer' || roleLower === 'officer';
+  const isOfficer = isMunicipalOfficer || roleLower === 'admin';
+  const isAdmin = roleLower === 'admin';
 
   const loadReport = useCallback(() => {
     if (!reportId) return;
@@ -59,7 +60,7 @@ export const ReportDetails = () => {
     if (isAdmin) {
       void fetchOfficers()
         .then((officers) => setOfficersList(officers))
-        .catch(() => console.warn('Could not load officers list for admin assignment'));
+        .catch((err) => console.warn('Could not load officers list for admin assignment:', err));
     }
   }, [isAdmin]);
 

@@ -17,7 +17,7 @@ export const formatReportResponse = (report: any) => {
   const attachments = Array.isArray(report.attachments)
     ? report.attachments.map((att: any) => ({
         ...att,
-        url: att.url || `/api/reports/${report.id}/attachments/${att.id}`,
+        url: `/api/reports/${report.id}/attachments/${att.id}`,
         download_url: `/api/reports/${report.id}/attachments/${att.id}`,
       }))
     : [];
@@ -76,17 +76,17 @@ export const create = async (
           'AI analysis is pending: AI service is currently unavailable or timed out.';
       } else {
         let finalStatus = 'REPORTED';
-        if (aiResult.potholeDetected && aiResult.confidenceScore >= 0.7) {
+        if (aiResult.potholeDetected) {
           finalStatus = 'AI_VERIFIED';
-        } else {
-          finalStatus = 'NEEDS_REVIEW';
         }
 
-        await prisma.report.update({
-          where: { id: report.id },
-          data: { status: finalStatus as any },
-        });
-        report.status = finalStatus as any;
+        if (finalStatus !== 'REPORTED') {
+          await prisma.report.update({
+            where: { id: report.id },
+            data: { status: finalStatus as any },
+          });
+          report.status = finalStatus as any;
+        }
       }
     }
 

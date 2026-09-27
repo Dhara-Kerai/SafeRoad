@@ -18,12 +18,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Ensure models and uploads directories exist
-RUN mkdir -p models uploads \
-    && useradd --system --uid 10001 --create-home saferoad \
-    && chown -R saferoad:saferoad /app
+RUN groupadd -g 10001 saferoad \
+    && useradd --system --uid 10001 --gid 10001 --create-home saferoad \
+    && mkdir -p models uploads \
+    && chown -R saferoad:saferoad /app \
+    && chmod 2775 uploads
 
 EXPOSE 8001
 
 USER saferoad
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["sh", "-c", "umask 0002 && exec uvicorn main:app --host 0.0.0.0 --port 8001"]

@@ -21,41 +21,27 @@ export const filterAdminData = (data: AdminData, filters: AdminFilters): AdminDa
 import { mapBackendSeverityToFrontend, mapBackendStatusToFrontend } from './reportService';
 
 export const fetchOfficers = async () => {
-  const response = await authenticatedRequestJson<{
-    status?: string;
-    data?: {
-      officers?: Array<{
-        id: string;
-        badgeNumber: string;
-        status: string;
-        user: { id: string; fullName: string; email: string; role: string };
-        department?: { id?: string; name?: string } | null;
-      }>;
-    };
-    officers?: Array<{
-      id: string;
-      badgeNumber: string;
-      status: string;
-      user: { id: string; fullName: string; email: string; role: string };
-      department?: { id?: string; name?: string } | null;
-    }>;
-  }>('/users/officers');
+  const response = await authenticatedRequestJson<any>('/users/officers');
 
   const officers = Array.isArray(response?.data?.officers)
     ? response.data.officers
-    : Array.isArray(response?.officers)
-      ? response.officers
-      : [];
+    : Array.isArray(response?.data)
+      ? response.data
+      : Array.isArray(response?.officers)
+        ? response.officers
+        : Array.isArray(response)
+          ? response
+          : [];
 
-  return officers.map((officer) => ({
+  return officers.map((officer: any) => ({
     id: officer.id,
-    userId: officer.user.id,
-    name: officer.user.fullName,
-    email: officer.user.email,
+    userId: officer.user?.id || officer.userId,
+    name: officer.user?.fullName || officer.name || 'Officer',
+    email: officer.user?.email || officer.email || '',
     badgeNumber: officer.badgeNumber,
-    department: officer.department?.name || 'Road Maintenance',
-    assigned: 0,
-    completed: 0,
+    department: officer.department?.name || officer.department || 'Road Maintenance',
+    assigned: officer.assigned || 0,
+    completed: officer.completed || 0,
     status: officer.status || 'Available',
     availability: officer.status === 'Available' ? 'Available' : (officer.status || 'Available'),
   }));
@@ -64,12 +50,20 @@ export const fetchOfficers = async () => {
 export const fetchAdminOverview = async () => {
   const [usersResponse, officersResponse, reportsResponse] = await Promise.all([
     authenticatedRequestJson<{ status?: string; data?: { users?: Array<{ id: string; fullName: string; email: string; role: string; createdAt: string; officer?: { status?: string; department?: { name?: string } | null } }> }; users?: Array<{ id: string; fullName: string; email: string; role: string; createdAt: string; officer?: { status?: string; department?: { name?: string } | null } }> }>('/users'),
-    authenticatedRequestJson<{ status?: string; data?: { officers?: Array<{ id: string; badgeNumber: string; status: string; user: { id: string; fullName: string; email: string; role: string }; department?: { name?: string } | null }> }; officers?: Array<{ id: string; badgeNumber: string; status: string; user: { id: string; fullName: string; email: string; role: string }; department?: { name?: string } | null }> }>('/users/officers'),
+    authenticatedRequestJson<any>('/users/officers'),
     authenticatedRequestJson<{ status?: string; data?: Array<{ id: string; title: string; city: string; status: string; severity: string; createdAt: string; department?: { name?: string } | null; officer?: { id: string; user?: { fullName: string } } | null; officerId?: string | null; aiResults?: Array<{ potholeDetected: boolean }> }>; items?: Array<{ id: string; title: string; city: string; status: string; severity: string; createdAt: string; department?: { name?: string } | null; officer?: { id: string; user?: { fullName: string } } | null; officerId?: string | null; aiResults?: Array<{ potholeDetected: boolean }> }> }>('/reports?limit=100'),
   ]);
 
   const users = Array.isArray(usersResponse?.data?.users) ? usersResponse.data.users : Array.isArray(usersResponse?.users) ? usersResponse.users : [];
-  const officers = Array.isArray(officersResponse?.data?.officers) ? officersResponse.data.officers : Array.isArray(officersResponse?.officers) ? officersResponse.officers : [];
+  const officers = Array.isArray(officersResponse?.data?.officers)
+    ? officersResponse.data.officers
+    : Array.isArray(officersResponse?.data)
+      ? officersResponse.data
+      : Array.isArray(officersResponse?.officers)
+        ? officersResponse.officers
+        : Array.isArray(officersResponse)
+          ? officersResponse
+          : [];
   const reports = Array.isArray(reportsResponse?.data) ? reportsResponse.data : Array.isArray(reportsResponse?.items) ? reportsResponse.items : [];
 
   return {
@@ -82,15 +76,15 @@ export const fetchAdminOverview = async () => {
       createdAt: new Date(user.createdAt).toLocaleDateString(),
       department: user.officer?.department?.name ?? 'Unassigned',
     })),
-    officers: officers.map((officer) => ({
+    officers: officers.map((officer: any) => ({
       id: officer.id,
-      userId: officer.user.id,
-      name: officer.user.fullName,
-      email: officer.user.email,
+      userId: officer.user?.id || officer.userId,
+      name: officer.user?.fullName || officer.name || 'Officer',
+      email: officer.user?.email || officer.email || '',
       badgeNumber: officer.badgeNumber,
-      department: officer.department?.name || 'Road Maintenance',
-      assigned: 0,
-      completed: 0,
+      department: officer.department?.name || officer.department || 'Road Maintenance',
+      assigned: officer.assigned || 0,
+      completed: officer.completed || 0,
       status: officer.status || 'Available',
       availability: officer.status === 'Available' ? 'Available' : (officer.status || 'Available'),
     })),

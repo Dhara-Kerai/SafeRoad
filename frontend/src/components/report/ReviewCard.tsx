@@ -1,7 +1,7 @@
 import type { ReportRequest } from '../../types/Report';
 
 export const ReviewCard = ({ report }: { report: ReportRequest }) => <div className="report-card review-card">
-  {report.image && <img src={report.image} alt="Reported pothole" />}
+  {report.imagePreview && <img src={report.imagePreview} alt="Reported pothole" />}
   <h2>Review your report</h2>
   <p><strong>Location:</strong> {[report.location.roadName, report.location.area, report.location.landmark, report.location.city, report.location.state].filter(Boolean).join(', ')}</p>
   <p><strong>Description:</strong> {report.description}</p>

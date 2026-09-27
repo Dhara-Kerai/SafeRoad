@@ -3,10 +3,11 @@ import { uploadImage, getServerUrl } from '../../services/reportService';
 
 interface Props {
   image: string | null;
-  onImage: (value: string | null) => void;
+  imagePreview: string | null;
+  onImage: (value: string | null, preview: string | null) => void;
 }
 
-export const UploadCard = ({ image, onImage }: Props) => {
+export const UploadCard = ({ image, imagePreview, onImage }: Props) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +19,7 @@ export const UploadCard = ({ image, onImage }: Props) => {
       setUploading(true);
       setError(null);
       const imageUrl = await uploadImage(file);
-      onImage(imageUrl);
+      onImage(imageUrl, URL.createObjectURL(file));
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to upload image. Please try again.');
@@ -53,9 +54,9 @@ export const UploadCard = ({ image, onImage }: Props) => {
     <div className="report-card upload-card">
       {image ? (
         <>
-          <img src={getServerUrl(image)} alt="Selected pothole" />
+          <img src={imagePreview || getServerUrl(image)} alt="Selected pothole" />
           <div>
-            <button type="button" className="button-secondary" onClick={() => onImage(null)}>
+            <button type="button" className="button-secondary" onClick={() => onImage(null, null)}>
               Remove image
             </button>
           </div>

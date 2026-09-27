@@ -441,7 +441,7 @@ async function runAudit() {
       fail('Officer Workload Metrics', workloadRes.data);
     }
   } catch (err) {
-    fail('Officer Workload Metrics', workloadRes.data);
+    fail('Officer Workload Metrics', err);
   }
 
   // 4.4 Officer Transitions Status to IN_PROGRESS
@@ -498,7 +498,7 @@ async function runAudit() {
       fail('Officer Transition Status to FIXED', resolveRes.data);
     }
   } catch (err) {
-    fail('Officer Transition Status to FIXED', resolveRes.data);
+    fail('Officer Transition Status to FIXED', err);
   }
 
   // 4.7 Citizen Views Updated Report & Comments

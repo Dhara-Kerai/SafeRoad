@@ -91,7 +91,7 @@ export const ReportPothole = () => {
         <p>Help improve road safety by reporting road damage.</p>
       </header>
       <WizardStepper currentStep={currentStep} />
-      {currentStep === 1 && <UploadCard image={report.image} onImage={(image) => updateReport({ image })} />}
+      {currentStep === 1 && <UploadCard image={report.image} imagePreview={report.imagePreview} onImage={(image, imagePreview) => updateReport({ image, imagePreview })} />}
       {currentStep === 2 && (
         <section className="report-card report-form">
           <h2>Location details</h2>

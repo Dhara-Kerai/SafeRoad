@@ -3,11 +3,25 @@ import time
 import uuid
 import cv2
 from PIL import Image
+from pathlib import Path
 from fastapi import UploadFile, HTTPException
 from app.core.model_loader import YOLOModelLoader
 import logging
 
 logger = logging.getLogger("uvicorn.error")
+
+
+def get_uploads_directory() -> Path:
+    configured_directory = os.getenv("UPLOADS_DIR")
+    if configured_directory:
+        return Path(configured_directory).expanduser().resolve()
+
+    service_directory = Path(__file__).resolve().parents[2]
+    native_shared_directory = service_directory.parent / "backend" / "uploads"
+    if native_shared_directory.exists():
+        return native_shared_directory
+
+    return Path.cwd() / "uploads"
 
 class DetectionService:
     @staticmethod
@@ -70,13 +84,13 @@ class DetectionService:
         pil_img = DetectionService.validate_image(file)
         
         # 2. Save original image temporarily inside uploads folder
-        uploads_dir = os.path.join(os.getcwd(), "uploads")
-        os.makedirs(uploads_dir, exist_ok=True)
+        uploads_dir = get_uploads_directory()
+        uploads_dir.mkdir(parents=True, exist_ok=True)
             
         file_ext = os.path.splitext(file.filename or "image.jpg")[1]
         unique_id = uuid.uuid4().hex
         orig_filename = f"orig_{unique_id}{file_ext}"
-        orig_path = os.path.join(uploads_dir, orig_filename)
+        orig_path = uploads_dir / orig_filename
         
         pil_img.save(orig_path)
         
@@ -103,12 +117,12 @@ class DetectionService:
         # 4. Perform Inference & Annotation
         try:
             # conf=0.25 is standard for fine-tuned object detection (prevents false positives)
-            results = model(orig_path, conf=0.25)
+            results = model(str(orig_path), conf=0.25)
             detections = []
 
 
             
-            cv_img = cv2.imread(orig_path)
+            cv_img = cv2.imread(str(orig_path))
             if cv_img is None:
                 raise Exception("OpenCV failed to read the saved image file.")
             result = results[0]
@@ -196,8 +210,8 @@ class DetectionService:
             annotated_image_path = None
             if len(detections) > 0:
                 annotated_filename = f"annotated_{unique_id}{file_ext}"
-                annotated_path = os.path.join(uploads_dir, annotated_filename)
-                cv2.imwrite(annotated_path, cv_img)
+                annotated_path = uploads_dir / annotated_filename
+                cv2.imwrite(str(annotated_path), cv_img)
                 annotated_image_path = f"/uploads/{annotated_filename}"
             
             # Clean up original image to save space

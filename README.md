@@ -117,7 +117,7 @@ npm run dev
 
 ## 🧠 AI Model Training Guide
 
-The AI microservice includes a model loader (`ai-service/app/core/model_loader.py`) that loads custom weights from `ai-service/models/best.pt`. If custom weights are missing, it automatically loads `yolov8n.pt` as an active placeholder.
+The AI microservice includes a model loader (`ai-service/app/core/model_loader.py`) that requires custom weights at `ai-service/models/best.pt`. If the model is missing or cannot be loaded, the service fails safely and reports itself as unhealthy; it never falls back to generic `yolov8n.pt` weights.
 
 To train a custom YOLOv8 model on a public pothole dataset:
 
@@ -153,7 +153,7 @@ SafeRoad uses **GitHub Actions** (`.github/workflows/ci.yml`) to automatically v
 
 ## ⚠️ Known Limitations & Roadmap
 
-1. **AI Model Weights**: In initial setup, default `yolov8n.pt` operates as a placeholder model until fine-tuned `models/best.pt` is placed in `ai-service/models/`.
+1. **AI Model Weights**: `ai-service/models/best.pt` is required. The AI service fails safely when the custom model is missing or cannot be loaded.
 2. **Offline Mode**: Client-side offline caching for mobile connectivity loss in remote rural roads is currently under active development.
 3. **Heatmap & Spatial Analytics**: Advanced spatial density clustering algorithms for municipal budget optimization are planned for future releases.
 
